@@ -131,6 +131,29 @@ static void label_edges() {
   CHECK(sm.takeLabelEdge() == VisionLabel::STANDING);  // re-appeared after absence
 }
 
+static void force_stop_light_off() {
+  // Light switched OFF while listening -> immediate stop, reason FORCED; no effect while WATCHING.
+  ListeningStateMachine sm(5000, 0.75f);
+  CHECK(sm.forceStop(0) == Transition::NONE);
+  CHECK(sm.onVision(1000, FALL) == Transition::STARTED);
+  CHECK(sm.onVision(2000, FALL) == Transition::EXTENDED);
+  CHECK(sm.forceStop(2500) == Transition::STOPPED);
+  CHECK(!sm.listening());
+  CHECK(sm.lastStopReason() == StopReason::FORCED);
+  CHECK(sm.lastSessionDurationMs() == 1500);
+  CHECK(sm.tick(10000) == Transition::NONE);  // already stopped
+  // normal expiry records HOLD_EXPIRED
+  CHECK(sm.onVision(20000, FALL) == Transition::STARTED);
+  CHECK(sm.tick(25000) == Transition::STOPPED);
+  CHECK(sm.lastStopReason() == StopReason::HOLD_EXPIRED);
+  // after resetLabel a resumed Fall produces a new edge
+  sm.onVision(26000, FALL);
+  sm.takeLabelEdge();
+  sm.resetLabel();
+  sm.onVision(27000, FALL);
+  CHECK(sm.takeLabelEdge() == VisionLabel::FALL);
+}
+
 static void rate_limiter() {
   RateLimiter rl(1000);
   CHECK(rl.allow(0));
@@ -152,11 +175,12 @@ int main() {
   scenario_D();
   millis_wraparound();
   label_edges();
+  force_stop_light_off();
   rate_limiter();
   if (failures) {
     std::fprintf(stderr, "%d check(s) failed\n", failures);
     return 1;
   }
-  std::printf("state_manager tests passed (scenarios A, B, C, D, wrap-around)\n");
+  std::printf("state_manager tests passed (scenarios A, B, C, D, wrap-around, light-off force stop)\n");
   return 0;
 }

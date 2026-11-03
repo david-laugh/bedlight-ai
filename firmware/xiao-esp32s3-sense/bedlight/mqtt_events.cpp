@@ -18,12 +18,43 @@ static char s_events_topic[96];
 static char s_status_topic[96];
 static char s_uri[96];
 static char s_lwt[160];
+static char s_light_topic[96];
+static volatile int s_light = -1;
+static volatile uint32_t s_light_updates = 0;
 
-static void onEvent(void*, esp_event_base_t, int32_t event_id, void*) {
+// Minimal parse of {"light_on": true|false, ...} (no JSON library dependency).
+static int parseLightOn(const char* data, int len) {
+  const char* key = "\"light_on\"";
+  const int klen = 10;
+  for (int i = 0; i + klen < len; ++i) {
+    if (memcmp(data + i, key, klen) != 0) continue;
+    int j = i + klen;
+    while (j < len && (data[j] == ' ' || data[j] == ':')) j++;
+    if (j + 4 <= len && memcmp(data + j, "true", 4) == 0) return 1;
+    if (j + 5 <= len && memcmp(data + j, "false", 5) == 0) return 0;
+    return -1;
+  }
+  return -1;
+}
+
+static void onEvent(void*, esp_event_base_t, int32_t event_id, void* event_data) {
+  esp_mqtt_event_handle_t ev = (esp_mqtt_event_handle_t)event_data;
   switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
       s_connected = true;
-      Serial.println("MQTT connected");
+      esp_mqtt_client_subscribe(s_client, s_light_topic, 1);  // retained state arrives right after
+      Serial.printf("MQTT connected, subscribed %s\n", s_light_topic);
+      break;
+    case MQTT_EVENT_DATA:
+      if (ev && ev->current_data_offset == 0 && ev->data_len == ev->total_data_len &&
+          ev->topic_len == (int)strlen(s_light_topic) && memcmp(ev->topic, s_light_topic, ev->topic_len) == 0) {
+        int v = parseLightOn(ev->data, ev->data_len);
+        if (v >= 0) {
+          if (v != s_light) Serial.printf("[LIGHT] virtual light %s\n", v ? "ON" : "OFF");
+          s_light = v;
+          s_light_updates++;
+        }
+      }
       break;
     case MQTT_EVENT_DISCONNECTED:
       if (s_connected) Serial.println("MQTT disconnected");
@@ -38,6 +69,7 @@ bool begin() {
   if (s_client) return true;
   snprintf(s_events_topic, sizeof(s_events_topic), "bedlight/v1/devices/%s/events", DEVICE_ID);
   snprintf(s_status_topic, sizeof(s_status_topic), "bedlight/v1/devices/%s/status", DEVICE_ID);
+  snprintf(s_light_topic, sizeof(s_light_topic), "bedlight/v1/lights/%s/state", ROOM_ID);
   snprintf(s_uri, sizeof(s_uri), "mqtt://%s:%d", MQTT_HOST, MQTT_PORT);
   snprintf(s_lwt, sizeof(s_lwt),
            "{\"schema_version\":\"1.2.0\",\"source\":\"device\",\"device_id\":\"%s\",\"state\":\"offline\"}",
@@ -62,6 +94,8 @@ bool begin() {
 }
 
 bool connected() { return s_connected; }
+int lightState() { return s_light; }
+uint32_t lightStateUpdates() { return s_light_updates; }
 uint32_t dropped() { return s_dropped; }
 uint32_t published() { return s_published; }
 

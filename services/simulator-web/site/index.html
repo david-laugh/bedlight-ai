@@ -12,7 +12,8 @@
     <span id="conn" class="pill off">controller 연결 안 됨</span>
   </header>
 
-  <div class="notice" id="autoNotice">자동 소등 미구현: 중앙 음성 모델이 아직 배포되지 않아 조명은 "off" 음성으로 꺼지지 않습니다. 아래 버튼은 시뮬레이터 수동 제어(source=simulator)입니다.</div>
+  <div class="notice" id="autoNotice">자동 소등 비활성: 중앙 음성 모델(.eim)이 배포되지 않았습니다. 벽 스위치로만 조명을 바꿀 수 있습니다.</div>
+  <div class="notice ok" id="autoOn" style="display:none">자동 소등 활성: 누운 상태(Fall) 세션 중 "off"(박수 두 번) 인식 시 조명을 끕니다.</div>
 
   <main>
     <section class="room card">
@@ -42,9 +43,11 @@
       </svg>
       <div class="light-controls">
         <span>조명: <b id="lightState">ON</b> <small id="lightBy"></small></span>
-        <button id="btnOn">켜기</button>
-        <button id="btnOff">끄기</button>
+        <span class="switch-label">벽 스위치(버튼 센서)</span>
+        <button id="btnOn">ON</button>
+        <button id="btnOff">OFF</button>
       </div>
+      <p class="muted" id="lightReason"></p>
     </section>
 
     <section class="card">
@@ -52,6 +55,7 @@
       <dl>
         <dt>장치</dt><dd id="devId">-</dd>
         <dt>연결</dt><dd id="devOnline">-</dd>
+        <dt>게이트</dt><dd id="devGate">-</dd>
         <dt>source</dt><dd id="devSource">-</dd>
         <dt>펌웨어</dt><dd id="devFw">-</dd>
         <dt>Vision</dt><dd id="visLabel">-</dd>
@@ -85,6 +89,19 @@
         <dt>DMA overflow</dt><dd id="srvOvf">-</dd>
         <dt>final / 완전성</dt><dd id="srvComplete">-</dd>
       </dl>
+    </section>
+
+    <section class="card">
+      <h2>음성 인식 (voice-service)</h2>
+      <dl>
+        <dt>모델</dt><dd id="vmModel">-</dd>
+        <dt>키워드</dt><dd id="vmKeyword">-</dd>
+        <dt>판정 창 수</dt><dd id="vmWindows">-</dd>
+      </dl>
+      <h3>최근 감지</h3>
+      <ul id="vmRecent" class="compact"></ul>
+      <h3>소등 판단</h3>
+      <ul id="decisions" class="compact"></ul>
     </section>
 
     <section class="card wide">

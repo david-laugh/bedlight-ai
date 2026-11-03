@@ -26,6 +26,7 @@ from fastapi.responses import JSONResponse, Response
 from . import __version__
 from .chunks import ChunkConflict, ChunkInfo, ChunkStore, sha256
 from .inference import load_spotter, model_status
+from .keyword import KeywordDetector, MqttPublisher, NullPublisher
 from .settings import Settings
 from .storage import DuplicateConflict, RecordingStore
 from .wav_utils import WavFormatError, analyze_pcm16, format_errors, parse_wav, pcm16_samples, pcm16_wav_bytes
@@ -50,17 +51,30 @@ def _ms(t0: float, t1: float) -> float:
     return round((t1 - t0) * 1000.0, 3)
 
 
-def create_app(settings: Settings | None = None, now: Callable[[], datetime] | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, now: Callable[[], datetime] | None = None, spotter=None,
+               publisher=None, start_worker: bool = True) -> FastAPI:
     settings = settings or Settings.from_env()
     clock = now or (lambda: datetime.now(timezone.utc))
     store = RecordingStore(settings.data_dir, settings.allowed_labels)
     chunk_store = ChunkStore(settings.runtime_dir)
-    spotter = load_spotter(settings.model_dir)
+    if spotter is None:
+        spotter, model_reason = load_spotter(settings.model_dir, settings.sample_rate, settings.keyword)
+    else:
+        model_reason = "injected"
+    detector = None
+    if spotter is not None:
+        if publisher is None:
+            publisher = MqttPublisher(settings.mqtt_host, settings.mqtt_port) if settings.mqtt_host else NullPublisher()
+        detector = KeywordDetector(chunk_store, spotter, publisher, settings.keyword, settings.keyword_threshold,
+                                   settings.sample_rate * settings.hop_ms // 1000)
+        if start_worker:
+            detector.start()
 
     app = FastAPI(title="BedLight AI Voice Service", version=__version__)
     app.state.settings = settings
     app.state.store = store
     app.state.chunk_store = chunk_store
+    app.state.detector = detector
 
     @app.middleware("http")
     async def timing_and_size_guard(request: Request, call_next):
@@ -230,14 +244,41 @@ def create_app(settings: Settings | None = None, now: Callable[[], datetime] | N
 
     @app.get("/api/v1/model")
     def model():
-        st = model_status(settings.model_dir)
-        return {"loaded": spotter is not None, "reason": st.reason, "model_dir": st.model_dir, "model_files": st.model_files}
+        st = model_status(settings.model_dir, spotter, model_reason)
+        return {"loaded": st.loaded, "reason": st.reason, "model_dir": st.model_dir, "model_files": st.model_files,
+                "model": st.info, "keyword": settings.keyword, "threshold": settings.keyword_threshold,
+                "hop_ms": settings.hop_ms, "stats": detector.stats if detector else None,
+                "recent_detections": detector.recent if detector else []}
 
     @app.post("/api/v1/recognize")
-    def recognize():
+    async def recognize(audio: Annotated[UploadFile | None, File()] = None):
+        """Classify an uploaded WAV (16 kHz mono 16-bit) with sliding windows. 503 when no model is deployed."""
         if spotter is None:
-            raise _err(503, "model_not_deployed", model_status(settings.model_dir).reason)
-        raise _err(501, "not_implemented", "inference endpoint not implemented")  # pragma: no cover
+            raise _err(503, "model_not_deployed", model_status(settings.model_dir, None, model_reason).reason)
+        if audio is None:
+            raise _err(422, "missing_audio", "multipart field 'audio' is required")
+        data = await audio.read(settings.max_upload_bytes + 1)
+        try:
+            info = parse_wav(data)
+        except WavFormatError as e:
+            raise _err(422, "invalid_wav", str(e))
+        errors = format_errors(info, settings.sample_rate, settings.channels, settings.bits_per_sample)
+        if errors:
+            raise _err(422, "unsupported_format", "; ".join(errors))
+        pcm = list(pcm16_samples(data, info))
+        win, hop = spotter.window_samples, settings.sample_rate * settings.hop_ms // 1000
+        if len(pcm) < win:
+            pcm = pcm + [0] * (win - len(pcm))
+        windows = []
+        for start in range(0, len(pcm) - win + 1, hop):
+            r = spotter.classify(pcm[start : start + win])
+            windows.append({"start_sample": start, "scores": r.scores, "inference_ms": round(r.inference_ms, 2)})
+        best = max(windows, key=lambda w: w["scores"].get(settings.keyword, 0.0))
+        score = best["scores"].get(settings.keyword, 0.0)
+        return {"keyword": settings.keyword, "threshold": settings.keyword_threshold,
+                "detected": score >= settings.keyword_threshold, "best_score": round(score, 4),
+                "best_window_start_sample": best["start_sample"], "windows": windows,
+                "model": {"name": spotter.name, "version": spotter.version}}
 
     # ------------------------------------------------------------------ RUNTIME_AUDIO chunks
     def _parse_bool(v: str) -> bool:
@@ -335,6 +376,8 @@ def create_app(settings: Settings | None = None, now: Callable[[], datetime] | N
         }
         if created:
             chunk_store.set_timing(sess, sequence, timing)
+            if detector is not None:
+                detector.submit(session_id)
         summary = sess.summary()
         body = {
             "status": "saved" if created else "duplicate",
@@ -347,7 +390,9 @@ def create_app(settings: Settings | None = None, now: Callable[[], datetime] | N
             "is_final": final,
             "session": summary,
             "timing": timing,
-            "inference": {"performed": False, "reason": model_status(settings.model_dir).reason},
+            "inference": {"performed": False, "queued": detector is not None,
+                          "reason": "queued for asynchronous keyword detection" if detector is not None
+                          else model_status(settings.model_dir, None, model_reason).reason},
         }
         log.info("chunk %s session=%s seq=%d start=%d samples=%d final=%s missing=%s disc=%d timing=%s",
                  body["status"], session_id, sequence, sample_start, samples, final, summary["missing_sequences"],

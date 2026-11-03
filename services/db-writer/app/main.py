@@ -25,7 +25,7 @@ from .sink import DryRunSink, SupabaseSink, insert_with_retry
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("db-writer")
 
-TOPICS = ["bedlight/v1/devices/+/events", "bedlight/v1/simulator/+/events"]
+TOPICS = ["bedlight/v1/devices/+/events", "bedlight/v1/simulator/+/events", "bedlight/v1/voice/+/events"]
 
 
 class Writer:

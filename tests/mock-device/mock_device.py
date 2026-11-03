@@ -7,7 +7,12 @@ Scenario B (default): Fall at 0 s, Fall again at 3 s (extend), Standing at 6 s, 
 Audio is a SYNTHETIC tone (pipeline test only, never training data). Vision results are scripted,
 NOT model output.
 
-Usage: python mock_device.py [--scenario A|B] [--speed 1.0] [--drop-seq N]
+Light gate (firmware 0.4 behaviour): subscribes bedlight/v1/lights/{room}/state; when the light turns OFF
+while listening, the session stops immediately (LISTENING_STOPPED reason=light_off).
+--voice-keyword-at MS publishes a scripted VOICE_KEYWORD_DETECTED (source=mock) on bedlight/v1/voice/{id}/events
+to exercise controller -> light OFF without a trained model.
+
+Usage: python mock_device.py [--scenario A|B] [--speed 1.0] [--drop-seq N] [--voice-keyword-at MS]
 """
 
 from __future__ import annotations
@@ -49,9 +54,32 @@ class Mock:
         self.mq.will_set(f"bedlight/v1/devices/{DEVICE}/status",
                          json.dumps({"schema_version": "1.2.0", "source": "mock", "device_id": DEVICE,
                                      "state": "offline"}), qos=1, retain=True)
+        self.light_on = None
+        self.mq.on_message = self._on_message
         self.mq.connect(os.getenv("MQTT_HOST", "mqtt-broker"), int(os.getenv("MQTT_PORT", "1883")))
+        self.mq.subscribe(f"bedlight/v1/lights/{ROOM}/state", qos=1)
         self.mq.loop_start()
         self.session = None
+
+    def _on_message(self, _c, _u, msg):
+        try:
+            self.light_on = bool(json.loads(msg.payload).get("light_on", True))
+            print(f"[mock] light state -> {'ON' if self.light_on else 'OFF'}")
+        except ValueError:
+            pass
+
+    def voice_keyword(self, start_sample):
+        ev = {
+            "schema_version": "1.2.0", "event_id": str(uuid.uuid4()), "trace_id": self.session, "source": "mock",
+            "device_id": DEVICE, "event_type": "VOICE_KEYWORD_DETECTED",
+            "model": {"name": "mock-kws", "version": "mock", "task": "keyword-spotting", "runtime": "mock"},
+            "confidence": 0.91, "timestamp_ms": int(time.time() * 1000), "inference_ms": 1.0,
+            "session_id": self.session,
+            "data": {"keyword": "off", "threshold": 0.8, "window_start_sample": start_sample, "window_samples": SR,
+                     "scores": {"off": 0.91, "noise": 0.05, "unknown": 0.04}, "audio_end_to_detection_ms": None},
+        }
+        self.mq.publish(f"bedlight/v1/voice/{DEVICE}/events", json.dumps(ev), qos=1).wait_for_publish(5)
+        print(f"[mock] {self.uptime():6d} ms  VOICE_KEYWORD_DETECTED (scripted, source=mock)")
 
     def uptime(self) -> int:
         return int((time.monotonic() - self.t0) * 1000)
@@ -124,12 +152,19 @@ class Mock:
             if listening and t >= next_chunk_ms:
                 self.chunk(seq, start, chunk_n, False)
                 seq, start, next_chunk_ms = seq + 1, start + chunk_n, next_chunk_ms + 1000
-            if listening and t - last_fall >= HOLD_MS:
+            if listening and self.args.voice_keyword_at is not None and t == self.args.voice_keyword_at:
+                self.voice_keyword(start)
+            light_off = self.light_on is False
+            if listening and (t - last_fall >= HOLD_MS or light_off):
                 partial = int(SR * ((t - (next_chunk_ms - 1000)) / 1000))
                 self.chunk(seq, start, partial, True)
-                self.event("LISTENING_STOPPED", data={"duration_ms": t, "extensions": len(sc["falls"]) - 1,
+                self.event("LISTENING_STOPPED", data={"reason": "light_off" if light_off else "hold_expired",
+                                                      "duration_ms": t, "extensions": len(sc["falls"]) - 1,
                                                       "chunks_sent": seq + 1})
                 listening = False
+                if light_off:
+                    print("[mock] light OFF -> IDLE (scenario ends)")
+                    break
             if t % 1000 == 0:
                 self.status(listening, max(0, HOLD_MS - (t - last_fall)) if listening else 0)
             time.sleep(tick / 1000 / speed)
@@ -142,4 +177,6 @@ if __name__ == "__main__":
     ap.add_argument("--scenario", choices=sorted(SCENARIOS), default="B")
     ap.add_argument("--speed", type=float, default=1.0)
     ap.add_argument("--drop-seq", type=int, default=None, help="skip uploading this sequence (gap test)")
+    ap.add_argument("--voice-keyword-at", type=int, default=None,
+                    help="publish a scripted VOICE_KEYWORD_DETECTED at this scenario time (ms, multiple of 100)")
     Mock(ap.parse_args()).run()

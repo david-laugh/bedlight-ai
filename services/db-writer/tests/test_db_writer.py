@@ -147,3 +147,10 @@ def test_failed_insert_goes_to_dead_letter_and_replays(tmp_path, validator):
     sink = Ok()
     assert replay(sink, rows) == (2, 0)
     assert {r["event_type"] for r in sink.got} == {"VISION_FALL_DETECTED", "LISTENING_STARTED"}
+
+
+def test_voice_keyword_event_is_stored(validator):
+    e = ev("runtime-voice-keyword-detected.json")
+    assert validator.errors(e) == []
+    row = to_row(e)
+    assert row["source"] == "voice-service" and row["confidence"] == 0.93 and row["inference_ms"] == 6.4

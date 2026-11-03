@@ -1,0 +1,30 @@
+{
+ "schema_version": "1.2.0",
+ "event_id": "b1c2d3e4-0001-4000-8000-000000000001",
+ "trace_id": "5d0c7a3e-1f2b-4c3d-9e4f-5a6b7c8d9e0f",
+ "source": "voice-service",
+ "device_id": "bedlight-01",
+ "event_type": "VOICE_KEYWORD_DETECTED",
+ "model": {
+  "name": "bedlight-kws",
+  "version": "ei-v1",
+  "task": "keyword-spotting",
+  "runtime": "edge-impulse-linux"
+ },
+ "confidence": 0.93,
+ "timestamp_ms": 1793707205000,
+ "inference_ms": 6.4,
+ "session_id": "5d0c7a3e-1f2b-4c3d-9e4f-5a6b7c8d9e0f",
+ "data": {
+  "keyword": "off",
+  "threshold": 0.8,
+  "window_start_sample": 24000,
+  "window_samples": 16000,
+  "scores": {
+   "off": 0.93,
+   "unknown": 0.05,
+   "noise": 0.02
+  },
+  "audio_end_to_detection_ms": 410
+ }
+}

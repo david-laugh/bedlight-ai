@@ -7,6 +7,7 @@
 //   LISTENING --(Fall conf >= threshold)-->  LISTENING          (EXTENDED: lastFall = now)
 //   LISTENING --(now - lastFall >= hold)-->  WATCHING           (STOPPED)
 //   Standing / no detection never stops LISTENING by itself.
+//   forceStop(): external stop (light switched OFF -> IDLE). Reason recorded as StopReason::FORCED.
 // All time arithmetic uses uint32_t subtraction, so millis() wrap-around (~49.7 days) is safe.
 #pragma once
 
@@ -17,6 +18,7 @@ namespace bedlight {
 enum class ListenState : uint8_t { WATCHING = 0, LISTENING = 1 };
 enum class Transition : uint8_t { NONE = 0, STARTED, EXTENDED, STOPPED };
 enum class VisionLabel : uint8_t { NONE = 0, FALL, STANDING };
+enum class StopReason : uint8_t { NONE = 0, HOLD_EXPIRED, FORCED };
 
 struct VisionResult {
   float fall_confidence;      // highest Fall box confidence in the frame (0 if none)
@@ -57,9 +59,25 @@ class ListeningStateMachine {
     if (state_ == ListenState::LISTENING && (uint32_t)(now_ms - last_fall_ms_) >= hold_ms_) {
       state_ = ListenState::WATCHING;
       last_session_duration_ms_ = now_ms - session_start_ms_;
+      last_stop_reason_ = StopReason::HOLD_EXPIRED;
       return Transition::STOPPED;
     }
     return Transition::NONE;
+  }
+
+  // Stop immediately regardless of the hold window (e.g. the light was switched OFF).
+  Transition forceStop(uint32_t now_ms) {
+    if (state_ != ListenState::LISTENING) return Transition::NONE;
+    state_ = ListenState::WATCHING;
+    last_session_duration_ms_ = now_ms - session_start_ms_;
+    last_stop_reason_ = StopReason::FORCED;
+    return Transition::STOPPED;
+  }
+
+  // Forget the current label (vision paused) so the next detection after resuming emits a fresh edge.
+  void resetLabel() {
+    label_ = VisionLabel::NONE;
+    label_edge_ = VisionLabel::NONE;
   }
 
   // Edge of the dominant vision label since the previous frame (for event rate limiting).
@@ -84,6 +102,7 @@ class ListeningStateMachine {
   uint32_t sessions() const { return sessions_; }
   uint32_t lastSessionDurationMs() const { return last_session_duration_ms_; }
   uint32_t holdMs() const { return hold_ms_; }
+  StopReason lastStopReason() const { return last_stop_reason_; }
   float threshold() const { return threshold_; }
   VisionLabel currentLabel() const { return label_; }
 
@@ -104,6 +123,7 @@ class ListeningStateMachine {
   uint32_t last_fall_ms_ = 0;
   uint32_t session_start_ms_ = 0;
   uint32_t last_session_duration_ms_ = 0;
+  StopReason last_stop_reason_ = StopReason::NONE;
   uint32_t extensions_ = 0;
   uint32_t sessions_ = 0;
   VisionLabel label_ = VisionLabel::NONE;

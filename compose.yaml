@@ -85,6 +85,13 @@ services:
       VOICE_DATA_DIR: /data/voice
       VOICE_RUNTIME_DIR: /data/runtime
       VOICE_MODEL_DIR: /models
+      # Keyword detection (active only when an Edge Impulse Linux .eim is in models/voice/deploy/).
+      # Note: the "off" class of this project's dataset is a DOUBLE HAND CLAP recording.
+      VOICE_KEYWORD_LABEL: ${VOICE_KEYWORD_LABEL:-off}
+      VOICE_KEYWORD_THRESHOLD: ${VOICE_KEYWORD_THRESHOLD:-0.8}
+      VOICE_HOP_MS: ${VOICE_HOP_MS:-250}
+      MQTT_HOST: mqtt-broker
+      MQTT_PORT: "1883"
       VOICE_UPLOAD_TOKEN: ${VOICE_UPLOAD_TOKEN:-}
       VOICE_ALLOWED_LABELS: off,unknown,noise
       VOICE_SAMPLE_RATE: "16000"
@@ -98,6 +105,9 @@ services:
       - ${VOICE_RUNTIME_HOST_DIR:-./runtime-data/audio}:/data/runtime
       # Future Edge Impulse Linux (.eim) model deployment location (read-only).
       - ./models/voice/deploy:/models:ro
+    depends_on:
+      mqtt-broker:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3)"]
       interval: 10s

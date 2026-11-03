@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bedlight.local/contracts/v1/light-state.schema.json",
+  "title": "BedLight AI virtual light state v1",
+  "description": "Retained message on bedlight/v1/lights/{room_id}/state. Published by the controller on behalf of the simulator's virtual wall switch (button sensor). ESP32 subscribes: light_on=false -> stop vision/listening (IDLE), true -> watch for Fall.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "room_id",
+    "light_on",
+    "source",
+    "reason",
+    "updated_at_ms"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^1\\.2\\.[0-9]+$"
+    },
+    "room_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+    },
+    "light_on": {
+      "type": "boolean"
+    },
+    "source": {
+      "enum": [
+        "simulator",
+        "controller",
+        "mock"
+      ],
+      "description": "simulator = wall switch pressed; controller = automatic voice-triggered light-off"
+    },
+    "reason": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "updated_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "trigger_event_id": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "session_id": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    }
+  }
+}
