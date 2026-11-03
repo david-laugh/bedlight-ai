@@ -149,6 +149,9 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:${SIMULATOR_HOST_PORT:-8080}:80"
+    volumes:
+      # Live-mounted so assets/person.png (user image) and page edits apply on browser refresh.
+      - ./services/simulator-web/site:/usr/share/nginx/html:ro
     networks: [bedlight-net]
 
   mock-device:

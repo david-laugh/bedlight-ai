@@ -157,3 +157,13 @@ def test_voice_model_status_drives_auto_control_flag():
     assert s.snapshot()["light"]["auto_control"] is False
     s.set_voice_model({"loaded": True})
     assert s.snapshot()["light"]["auto_control"] is True
+
+
+def test_occupant_buttons():
+    from app.main import app
+
+    with TestClient(app) as c:
+        assert c.get("/api/v1/state").json()["occupant"]["in_bed"] is False
+        assert c.post("/api/v1/occupant", json={"in_bed": True}).json()["in_bed"] is True
+        assert c.get("/api/v1/state").json()["occupant"]["in_bed"] is True
+        assert c.post("/api/v1/occupant", json={"in_bed": False}).json()["in_bed"] is False

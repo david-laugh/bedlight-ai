@@ -22,8 +22,67 @@
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on }),
     });
   }
+  async function setOccupant(inBed) {
+    await fetch(`http://${controller}/api/v1/occupant`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ in_bed: inBed }),
+    });
+  }
+  let lightOn = true;
   $("btnOn").onclick = () => setLight(true);
   $("btnOff").onclick = () => setLight(false);
+  $("wallSwitch").onclick = () => setLight(!lightOn);
+  $("btnSleep").onclick = () => setOccupant(true);
+  $("btnWake").onclick = () => setOccupant(false);
+
+  // User image (assets/person.png) if present, otherwise the bundled placeholder silhouette.
+  (function loadPerson() {
+    const img = new Image();
+    img.onload = () => $("personImg").setAttribute("href", `assets/person.png?v=${Date.now()}`);
+    img.src = `assets/person.png?v=${Date.now()}`;
+  })();
+
+  let lastClapKey = null, clapTimer = null;
+  function showClap(r) {
+    const key = `${r.session_id}-${r.received_at}`;
+    if (key === lastClapKey) return;
+    const first = lastClapKey === null;
+    lastClapKey = key;
+    if (first) return;  // do not replay an old detection when the page opens
+    $("clapText").textContent = `👏 off 감지 ${fmt(r.confidence)}`;
+    $("clapBubble").classList.remove("hidden");
+    clearTimeout(clapTimer);
+    clapTimer = setTimeout(() => $("clapBubble").classList.add("hidden"), 4000);
+  }
+
+  function renderScene(s, d) {
+    const on = s.light.on;
+    lightOn = on;
+    $("bulb").classList.toggle("on", on);
+    $("lightGlow").style.opacity = on ? 1 : 0;
+    $("dark").style.opacity = on ? 0 : 0.62;
+    $("switchToggle").setAttribute("y", on ? 204 : 215);
+    $("switchToggle").setAttribute("fill", on ? "#22c55e" : "#64748b");
+
+    const inBed = !!(s.occupant && s.occupant.in_bed);
+    $("personImg").classList.toggle("hidden", !inBed);
+    $("occState").textContent = inBed ? "침대에 누움" : "침대 밖";
+
+    const rt = (d && d.runtime) || {}, l = d ? d.listening : { active: false };
+    const gate = rt.gate || (l.active ? "listening" : d && d.online ? "watching" : "offline");
+    const camOn = d && d.online && gate !== "idle_light_off" && gate !== "paused" && rt.runtime_enabled !== false;
+    $("fov").setAttribute("class", `fov ${!camOn ? "off" : l.active ? "listening" : ""}`);
+    $("micRing").classList.toggle("hidden", !l.active);
+    $("camLed").setAttribute("fill", !d || !d.online ? "#64748b" : l.active ? "#a855f7" : camOn ? "#22c55e" : "#f59e0b");
+    const v = d ? d.vision : {};
+    $("camBadge").textContent = !d || !d.online ? "ESP32 오프라인"
+      : !camOn ? (gate === "idle_light_off" ? "카메라 OFF (조명 꺼짐)" : "카메라 일시정지")
+      : v.label === "Fall" ? `카메라: Fall ${fmt(v.fall_confidence)}`
+      : v.label === "Standing" ? `카메라: Standing ${fmt(v.standing_confidence)}` : "카메라: 감지 없음";
+    $("micBadge").textContent = l.active ? `🎤 녹음 중 ${(l.remaining_ms / 1000).toFixed(1)} s` : "";
+    $("sceneLabel").textContent = `${inBed ? "가상 사람: 취침 중" : "가상 사람: 침대 밖"} · 조명 ${on ? "ON" : "OFF"}`;
+    const recent = ((s.voice || {}).recent || [])[0];
+    if (recent) showClap(recent);
+  }
 
   function render(s) {
     // light
@@ -32,13 +91,11 @@
     $("lightBy").textContent = `(${s.light.changed_by})`;
     $("lightReason").textContent = s.light.reason ? `마지막 변경: ${s.light.reason}` : "";
     $("autoOn").style.display = s.light.auto_control ? "" : "none";
-    $("bulb").classList.toggle("on", on);
-    $("lightGlow").style.display = on ? "" : "none";
-    $("wall").classList.toggle("lit", false);
     $("autoNotice").style.display = s.light.auto_control ? "none" : "";
 
     // device (prefer a real device, else first)
     const d = s.devices.find((x) => x.source === "device") || s.devices[0];
+    renderScene(s, d);
     if (!d) { $("devId").textContent = "수신 이벤트 없음"; return renderServer(s); }
     $("devId").textContent = d.device_id;
     $("devOnline").innerHTML = d.online ? '<span class="pill ok">online</span>' : `<span class="pill bad">offline</span> ${d.seconds_since_seen ?? "-"} s`;
@@ -53,9 +110,6 @@
     $("visStand").textContent = fmt(v.standing_confidence);
     $("visInf").textContent = v.inference_ms == null ? "-" : `${fmt(v.inference_ms, 0)} ms`;
     $("visFps").textContent = rt.fps == null ? "-" : fmt(rt.fps, 2);
-    $("personLying").classList.toggle("hidden", v.label !== "Fall");
-    $("personStanding").classList.toggle("hidden", v.label !== "Standing");
-    $("sceneLabel").textContent = v.label === "Fall" ? "Fall 감지 (누운 상태로 간주)" : v.label === "Standing" ? "Standing 감지" : "감지 없음";
 
     // listening
     const l = d.listening;
