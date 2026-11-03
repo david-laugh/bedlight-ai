@@ -2,9 +2,10 @@
 
 | 모드 | 상태 |
 |---|---|
-| `DATASET_RECORDING` — PDM 마이크 녹음 → WAV → Voice Service 업로드 | **구현. Core 2.0.17 컴파일 확인. 실제 보드 동작 미검증** |
-| Vision (누운 자세, Edge Impulse 온디바이스) | 미구현 |
-| MQTT 이벤트 발행 | 미구현 |
+| `DATASET_RECORDING` — PDM 마이크 녹음 → WAV → Voice Service 업로드 | 구현, 보드에서 150 건 녹음으로 검증 |
+| RUNTIME: FOMO Fall 감지 → 5 s LISTENING → 1 s 오디오 청크 업로드 + MQTT | **구현 (펌웨어 0.3). 실제 보드에서 4 개 세션 검증 (추론 ~180 ms, 오디오 누락 0)** |
+
+상세: [docs/runtime-pipeline.md](../../docs/runtime-pipeline.md)
 
 ESP32 는 Voice 모델을 실행하지 않는다 (아키텍처 v2). 사용 방법: [docs/voice-dataset.md](../../docs/voice-dataset.md).
 
