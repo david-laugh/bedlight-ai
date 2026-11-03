@@ -70,8 +70,10 @@ jobs:
             wait
             test "$(cat /tmp/recv)" = "ping"'
 
-      - name: Simulator placeholder page responds
-        run: curl -fsS http://127.0.0.1:8080/ | grep -q "PLACEHOLDER"
+      - name: Simulator dashboard responds
+        run: |
+          curl -fsS http://127.0.0.1:8080/ | grep -q "<title>BedLight AI Simulator</title>"
+          curl -fsS http://127.0.0.1:8080/app.js | grep -q "/ws"
 
       - name: Controller and db-writer start
         run: |
