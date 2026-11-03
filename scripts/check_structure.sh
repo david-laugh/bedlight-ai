@@ -50,6 +50,10 @@ required_files=(
   firmware/xiao-esp32s3-sense/bedlight/bedlight.ino
   firmware/xiao-esp32s3-sense/bedlight/wav_header.h
   firmware/xiao-esp32s3-sense/bedlight/config.example.h
+  firmware/xiao-esp32s3-sense/bedlight/config_defaults.h
+  firmware/xiao-esp32s3-sense/bedlight/state_manager.h
+  firmware/xiao-esp32s3-sense/bedlight/vision_inference.cpp
+  firmware/xiao-esp32s3-sense/tests/test_state_manager.cpp
   services/voice-service/Dockerfile
   services/voice-service/README.md
   services/voice-service/app/main.py

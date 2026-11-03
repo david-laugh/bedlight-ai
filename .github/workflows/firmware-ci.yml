@@ -66,9 +66,13 @@ jobs:
           /tmp/test_wav_header /tmp/firmware_header_synthetic.wav
       - name: Cross-check firmware WAV with the server-side validator
         run: python scripts/check_wav.py --strict /tmp/firmware_header_synthetic.wav
+      - name: State machine tests (Fall -> LISTENING, 5 s hold/extend, scenarios A-D, millis wrap)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror             -I firmware/xiao-esp32s3-sense/bedlight             firmware/xiao-esp32s3-sense/tests/test_state_manager.cpp -o /tmp/test_state_manager
+          /tmp/test_state_manager
 
   compile:
-    name: Compile (arduino-cli, esp32 core 2.0.x)
+    name: Compile WITHOUT vision model (BEDLIGHT_VISION_ENABLED=0, not a vision integration check)
     needs: detect
     if: needs.detect.outputs.has_sketch == 'true'
     runs-on: ubuntu-24.04
@@ -76,7 +80,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Load pinned toolchain
-        run: grep -E '^[A-Z_]+=' firmware/xiao-esp32s3-sense/toolchain.env >> "$GITHUB_ENV"
+        run: grep -E '^[A-Z0-9_]+=' firmware/xiao-esp32s3-sense/toolchain.env >> "$GITHUB_ENV"
 
       - name: Guard core version is 2.0.x
         run: |
@@ -117,8 +121,8 @@ jobs:
             arduino-cli lib install --zip-path "$z"
           done
 
-      - name: Create CI config.h from template (no real credentials)
-        run: cp "$SKETCH_DIR/config.example.h" "$SKETCH_DIR/config.h"
+      - name: Create CI config.h from template (no real credentials, vision disabled)
+        run: sed 's/#define BEDLIGHT_VISION_ENABLED 1/#define BEDLIGHT_VISION_ENABLED 0/' "$SKETCH_DIR/config.example.h" > "$SKETCH_DIR/config.h"
 
       - name: Compile
         run: |
@@ -128,7 +132,79 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: bedlight-firmware-${{ github.sha }}
+          name: bedlight-firmware-novision-${{ github.sha }}
+          path: |
+            build/*.bin
+            build/compile.log
+          if-no-files-found: error
+
+  ei-library:
+    name: Edge Impulse library availability
+    runs-on: ubuntu-24.04
+    outputs:
+      available: ${{ steps.check.outputs.available }}
+    steps:
+      - id: check
+        env:
+          EI_API_KEY: ${{ secrets.EI_API_KEY }}
+        run: |
+          if [[ -n "$EI_API_KEY" ]]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Vision firmware NOT compiled"
+              echo "Secret \`EI_API_KEY\` is not set, so the Edge Impulse Arduino library (Fall/Standing FOMO,"
+              echo "project 1155470) cannot be downloaded. The \`compile-vision\` job is **skipped (not passed)**."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  compile-vision:
+    name: Compile WITH Edge Impulse FOMO library (vision integration)
+    needs: [detect, ei-library]
+    if: needs.detect.outputs.has_sketch == 'true' && needs.ei-library.outputs.available == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load pinned toolchain
+        run: grep -E '^[A-Z0-9_]+=' firmware/xiao-esp32s3-sense/toolchain.env >> "$GITHUB_ENV"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pyserial
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Cache Arduino data
+        uses: actions/cache@v4
+        with:
+          path: ~/.arduino15
+          key: arduino15-esp32-${{ env.ESP32_CORE_VERSION }}
+      - name: Install ESP32 core
+        run: |
+          arduino-cli config init --overwrite
+          arduino-cli config add board_manager.additional_urls "$ESP32_BOARD_MANAGER_URL"
+          arduino-cli config set library.enable_unsafe_install true
+          arduino-cli core update-index
+          arduino-cli core install "esp32:esp32@${ESP32_CORE_VERSION}"
+      - name: Fetch Edge Impulse Arduino library
+        env:
+          EI_API_KEY: ${{ secrets.EI_API_KEY }}
+          EI_PROJECT_ID: ${{ vars.EI_PROJECT_ID || '1155470' }}
+        run: bash scripts/fetch_ei_arduino_library.sh /tmp/ei-lib.zip
+      - name: Install library and verify model metadata
+        run: |
+          arduino-cli lib install --zip-path /tmp/ei-lib.zip
+          meta=$(find ~/Arduino/libraries -path '*model-parameters/model_metadata.h' | head -1)
+          grep -E "EI_CLASSIFIER_OBJECT_DETECTION +1|EI_CLASSIFIER_INPUT_WIDTH +96|EI_CLASSIFIER_LABEL_COUNT +2" "$meta"
+          test -d ~/Arduino/libraries/Fall_detection_system_for_workers_in_industry_inferencing
+      - name: Compile with vision
+        run: |
+          cp "$SKETCH_DIR/config.example.h" "$SKETCH_DIR/config.h"
+          mkdir -p build
+          arduino-cli compile --fqbn "$FQBN" --warnings default --output-dir build "$SKETCH_DIR" 2>&1 | tee build/compile.log
+          grep -E "Sketch uses|Global variables" build/compile.log >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bedlight-firmware-vision-${{ github.sha }}
           path: |
             build/*.bin
             build/compile.log
