@@ -105,3 +105,11 @@ pytest -q services/voice-service/tests && pytest -q scripts/tests
 - 녹음 파일은 개인 데이터 → git 제외.
 - voice-service 8001 은 LAN 노출 → `VOICE_UPLOAD_TOKEN` 권장, 인터넷 포트포워딩 금지.
 - Supabase secret key 는 db-writer 에만. 무인증 MQTT 1883 은 localhost 전용. 자세한 내용: [docs/security.md](docs/security.md)
+
+## 라이선스
+
+이 저장소의 소스 코드와 문서는 [MIT License](LICENSE) 로 배포한다.
+
+다음은 이 라이선스에 포함되지 않는다:
+- 음성 데이터셋(녹음 파일) — 개인 데이터이며 저장소에 포함하지 않는다.
+- Edge Impulse 로 학습·배포한 모델 및 외부 공개 Vision 모델 — 각 원본의 라이선스·이용 약관을 따른다.
