@@ -10,7 +10,7 @@ XIAO ESP32S3 Sense 의 카메라로 사람이 침대에 누운 상태를 감지�
 
 > ## 현재 단계: Fall 감지 → 5초 LISTENING → 런타임 오디오 파이프라인 (펌웨어 0.3)
 > ESP32 Edge Impulse FOMO(Fall/Standing) + 조건부 오디오 청크 전송, controller/db-writer/simulator 구현.
-> 실제 보드에서 Fall 감지 → 5초 LISTENING → 오디오 청크 업로드(누락 0) 확인. Supabase 기록은 마이그레이션 적용 대기. 상세: [docs/runtime-pipeline.md](docs/runtime-pipeline.md)
+> 실제 보드에서 Fall 감지 → 5초 LISTENING(연장) → 오디오 청크 업로드(누락 0) → Supabase 기록까지 확인. 상세: [docs/runtime-pipeline.md](docs/runtime-pipeline.md)
 >
 > ### 이전 단계: 음성 데이터셋 수집
 > **구현됨**: ESP32 녹음·WAV·업로드 펌웨어 (Core 2.0.17 컴파일 확인), voice-service 업로드 API (테스트·컨테이너 검증),

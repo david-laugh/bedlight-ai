@@ -1,6 +1,6 @@
 # Fall 감지 → 5초 LISTENING → 런타임 오디오 파이프라인 (펌웨어 0.3)
 
-> 이 문서의 "검증" 표기는 실제로 확인한 범위만 나타낸다. 2026-11-03 실제 XIAO ESP32S3 Sense 보드에서 4개 LISTENING 세션으로 파이프라인을 확인했다 (§10). Supabase 기록은 마이그레이션 적용 대기 중이다.
+> 이 문서의 "검증" 표기는 실제로 확인한 범위만 나타낸다. 2026-11-03 실제 XIAO ESP32S3 Sense 보드에서 파이프라인과 Supabase 기록까지 확인했다 (§10).
 
 ## 1. Vision 모델 라이브러리
 
@@ -143,8 +143,9 @@ Standing / 미검출 프레임은 LISTENING 을 종료시키지 않는다.
 
 마이그레이션 `20261103020000_runtime_vision_audio_events.sql`: 이벤트 타입 확장 + `session_id, device_timestamp_ms, network_ms, ok` 컬럼.
 행 = 이벤트 1 건 (원본 오디오 없음, 메타데이터만). 매핑: `confidence`, `inference_ms`(비전), `network_ms`(청크 업로드), `ok`, 전체 `payload` jsonb.
-상태: `.env` 에 Supabase 자격증명 등록 완료, db-writer `Supabase sink enabled` 확인. 그러나 `public.device_events` 테이블이 아직 없어
-REST 가 404 (`PGRST205`) 를 반환한다 → **실제 Supabase 기록은 미검증**. 적용 절차:
+상태 (2026-11-03): 마이그레이션 3 개 적용, `public.device_events` 및 추가 컬럼(`session_id, network_ms, ok, device_timestamp_ms`) 확인.
+db-writer 가 실시간 INSERT 중. 테이블 생성 전 쌓인 DRY-RUN 34 행 + dead-letter 505 행을 `app.replay` 로 재전송 (539 행, 실패 0).
+행 단위 확인: `source=device` 만 존재, payload 에 오디오 바이트 없음. 적용 절차(새 환경용):
 1. Supabase SQL Editor 에서 `supabase/migrations/*.sql` 3 개를 파일명 순서대로 실행
 2. `docker compose up -d db-writer` (로그 `Supabase sink enabled`)
 3. 그동안 쌓인 행 재전송: `docker compose exec db-writer python -m app.replay /data/db-writer/events.jsonl /data/db-writer/failed.jsonl`
@@ -175,27 +176,35 @@ REST 가 404 (`PGRST205`) 를 반환한다 → **실제 Supabase 기록은 미�
 
 ## 10. 검증 현황 (2026-11-03)
 
-실기기 근거: XIAO ESP32S3 Sense, 펌웨어 `0.3.0-runtime`, `source=device`, LISTENING 세션 4 개 (서버 `runtime-data`, db-writer DRY-RUN 34 행).
+실기기 근거: XIAO ESP32S3 Sense, 펌웨어 `0.3.0-runtime`, `source=device`.
+짧은 세션 4 개 + 연속 세션 1 개 (약 287 s, 측정 시점 진행 중), Supabase `device_events` 800 행 이상.
 
 | # | 완료 기준 | 상태 | 근거 |
 |---|---|---|---|
 | 1 | 실제 ESP32 에 FOMO 탑재 | **검증** | 보드에서 실행, status `firmware_version=0.3.0-runtime`, 모델 project 1155470 v2 |
-| 2 | 실제 카메라로 Fall/Standing 추론 | **검증** | `VISION_FALL_DETECTED` conf 0.87–0.91, `VISION_STANDING_DETECTED` 수신. 추론 178–186 ms, 약 5.5 FPS. 정확도(오탐/미탐)는 정량 평가하지 않음 |
-| 3 | Fall 감지 시 LISTENING 시작 | **검증** | `LISTENING_STARTED` 4 회 (트리거 conf 0.85–0.91 ≥ 0.75) |
-| 4 | 마지막 Fall 이후 5 초 유지 | **검증** | 연장 없는 세션 길이 5,063 / 5,075 / 5,077 ms (마지막 Fall + 5 s, 오차는 프레임 간격 ~180 ms 이내) |
-| 5 | 재감지 시 5 초 연장 | **검증 (1 회)** | 연장 1 회 세션 5,250 ms. 반복 연장(시나리오 B 형태)은 호스트 테스트로만 검증 |
-| 6 | 오디오 수집 중 Vision 추론 지속 | **검증 (간접)** | LISTENING 중 `LISTENING_EXTENDED` 발생 = 녹음 중 추론 결과가 상태 머신에 반영됨. 녹음 중 FPS 별도 측정은 안 함 |
-| 7 | 오디오 데이터 누락 측정 | **검증** | 4 세션 모두 `complete=true`, missing 0, discontinuity 0, `dma_overflows` 0, dropped 0 |
-| 8 | 중앙 서버에 실제 오디오 업로드 | **검증** | 청크 21 개 전부 HTTP 201, 업로드 평균 441 ms / 최대 2,825 ms, 세션 RMS 약 -29~-30 dBFS (무음 아님) |
-| 9 | MQTT 상태 이벤트 | **검증** | 34 개 이벤트 전부 v1.2 스키마 통과, controller 가 device online / 0.3.0-runtime 인식 |
-| 10 | Supabase 이벤트 기록 | **미검증** | 자격증명 등록·sink 활성 확인. 테이블 미생성(404) → 마이그레이션 적용 후 replay 필요 (§7) |
-| 11 | 웹 시뮬레이터 상태 업데이트 | **부분** | controller 상태(WS 소스)가 실기기 값으로 갱신됨 확인. 브라우저 화면은 사용자 육안 확인 |
-| 12 | GitHub Actions CI | PR 에서 확인 | 이전 `firmware-ci` 실패 원인(toolchain.env 정규식이 숫자 포함 변수명을 누락) 수정 |
+| 2 | 실제 카메라로 Fall/Standing 추론 | **검증** | Fall conf 0.85–0.91, Standing 이벤트 수신. 추론 평균 184 ms (177–215, n=303), 약 5.3–5.5 FPS. 정확도(오탐/미탐)는 정량 평가 안 함 |
+| 3 | Fall 감지 시 LISTENING 시작 | **검증** | `LISTENING_STARTED` 5 회 |
+| 4 | 마지막 Fall 이후 5 초 유지 | **검증** | 연장 없는 세션 5,063 / 5,075 / 5,077 ms (오차 ≤ 프레임 간격 ~180 ms) |
+| 5 | 재감지 시 5 초 연장 | **검증** | 연속 세션에서 연장 981 회, 세션 종료 없이 유지. `LISTENING_EXTENDED` 는 1 회/초로 제한되어 기록 |
+| 6 | 오디오 수집 중 Vision 추론 지속 | **검증** | LISTENING 중 status `fps=5.25`, `inference_ms_avg=178.7` (평상시 ~5.5 FPS 와 유사) |
+| 7 | 오디오 데이터 누락 측정 | **검증** | 짧은 세션 4 개 `complete=true`. 287 s 연속 세션 청크 287 개: missing 0, discontinuity 0, DMA overflow 0, dropped 0, loss_ratio 0.0 |
+| 8 | 중앙 서버에 실제 오디오 업로드 | **검증** | 청크 업로드 281/281 성공 (Supabase `ok`), network_ms 평균 314 / 최대 2,825 |
+| 9 | MQTT 상태 이벤트 | **검증** | 모든 이벤트 v1.2 스키마 통과, controller 가 device online / LISTENING 남은 시간 표시 |
+| 10 | Supabase 이벤트 기록 | **검증** | 실시간 INSERT + replay 539 행. 타입별: VISION_FALL 302, LISTENING_EXTENDED 214, AUDIO_CHUNK_SENT 281, STARTED 5, STOPPED 4, STANDING 1 (측정 시점). 원본 오디오 미저장 |
+| 11 | 웹 시뮬레이터 상태 업데이트 | **부분** | controller 상태(WS 소스) 실기기 값 갱신 확인. 브라우저 화면은 사용자 육안 확인 |
+| 12 | GitHub Actions CI | **검증** | PR #4 (`release` 대상) scaffold-ci / services-ci(통합 포함) / firmware-ci 통과. 비전 포함 컴파일 job 은 `EI_API_KEY` 미설정으로 skipped |
 
-### 관찰된 한계
+### RLS
+마이그레이션이 RLS 를 켜고 `anon`, `authenticated` 권한을 회수한다. 이 PC 의 `.env` 에는 publishable/anon 키가 없어
+"anon 키로 조회 불가" 는 Supabase 에서 직접 확인하지 않았다 (로컬 PostgreSQL 에서는 `permission denied` 확인).
 
-- Fall 직후 약 100 ms 는 녹음되지 않는다 (PDM 안정화 warm-up). 세션 5,063 ms 대비 오디오 4,960 ms.
-- `LISTENING_STOPPED.chunks_sent` 는 종료 시점 스냅샷이다 (업로드 진행 중 청크 미포함). 최종 수신 여부는 서버 세션 기준.
-- 업로드 최대 2.8 s 관찰. 청크 풀(4 s) 을 넘는 지연이 지속되면 청크가 버려지고 서버에 누락으로 보고된다.
-- 최소 free heap 153,920 B (짧은 실행). 장시간 실행 누수 여부는 미측정.
-- 모델은 산업현장 낙상용이며 침대 누움 자세에 대한 정확도는 평가하지 않았다.
+### 관찰된 한계 / 개선 후보
+
+- `VISION_FALL_DETECTED` 가 302 건: 라벨이 Fall↔None 으로 프레임마다 흔들리면 edge 이벤트가 반복된다. 디바운스(예: N 프레임 연속 시 edge 인정) 검토 필요.
+- 장면이 계속 Fall 로 인식되면 LISTENING 이 끝나지 않는다 (287 s 이상 연속 스트리밍 관찰). 최대 세션 길이 제한 검토 필요.
+- Fall 직후 약 100 ms 는 녹음되지 않는다 (PDM warm-up).
+- `LISTENING_STOPPED.chunks_sent` 는 종료 시점 스냅샷이다. 최종 수신 여부는 서버 세션 기준.
+- 업로드 최대 2.8 s 관찰. 청크 풀(4 s) 을 넘는 지연이 지속되면 청크가 버려지고 누락으로 보고된다.
+- 최소 free heap 153,920 B → 151,996 B (연속 세션 약 5 분 후). 장시간(수 시간) 누수 여부는 미측정.
+- 모델은 산업현장 낙상용이며 침대 누움 자세 정확도는 평가하지 않았다.
+- 테이블 생성 전에는 db-writer 가 실패 행을 dead-letter 에 보관했다가 replay 로 복구했다. 수정 배포 중 약 1 분간 db-writer 가 중단되어 그 사이 이벤트는 누락됐을 수 있다.
