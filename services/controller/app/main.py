@@ -144,6 +144,10 @@ class LightRequest(BaseModel):
     on: bool
 
 
+class OccupantRequest(BaseModel):
+    in_bed: bool
+
+
 @app.get("/healthz")
 def healthz():
     return {"status": "ok", "mqtt_connected": bool(_mqtt and _mqtt.is_connected())}
@@ -160,6 +164,12 @@ def set_light(req: LightRequest):
     state.set_light(req.on, "simulator", "wall switch pressed in simulator")
     publish_light()
     return state.snapshot()["light"]
+
+
+@app.post("/api/v1/occupant")
+def set_occupant(req: OccupantRequest):
+    """Simulator 취침/기상 buttons: place / remove the virtual person on the bed (display only)."""
+    return state.set_occupant(req.in_bed)
 
 
 @app.websocket("/ws")

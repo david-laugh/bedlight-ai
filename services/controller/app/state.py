@@ -32,6 +32,9 @@ class SystemState:
             "auto_control_reason": "voice keyword model not deployed - automatic light-off is NOT active",
         }
         self.voice: dict = {"model": None, "recent": []}
+        # Virtual occupant shown in the simulator (취침/기상 buttons). Visual only: it does not start listening;
+        # real listening is triggered by the ESP32 camera (Fall).
+        self.occupant = {"in_bed": False, "updated_at": _now_iso()}
         self.decisions: deque = deque(maxlen=20)
         self.server_audio: dict = {"reachable": None, "latest_session": None, "checked_at": None}
 
@@ -137,6 +140,11 @@ class SystemState:
                 return None
             return {"listening": dict(d["listening"]), "last_session": dict(d["last_session"] or {}) or None}
 
+    def set_occupant(self, in_bed: bool) -> dict:
+        with self._lock:
+            self.occupant = {"in_bed": in_bed, "updated_at": _now_iso()}
+            return dict(self.occupant)
+
     def set_voice_model(self, model: dict | None) -> None:
         with self._lock:
             self.voice["model"] = model
@@ -188,6 +196,7 @@ class SystemState:
             return {
                 "room_id": self.room_id,
                 "light": dict(self.light),
+                "occupant": dict(self.occupant),
                 "devices": devices,
                 "server_audio": dict(self.server_audio),
                 "voice": {"model": self.voice["model"], "recent": list(self.voice["recent"])},

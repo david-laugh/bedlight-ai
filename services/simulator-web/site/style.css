@@ -43,3 +43,17 @@ button { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--line); b
 ul.compact { margin: 0; padding-left: 18px; font-size: 12px; }
 ul.compact li.acc { color: var(--ok); } ul.compact li.rej { color: var(--muted); }
 .src-voice-service { color: #7c3aed; font-weight: 600; } .src-controller { color: var(--accent); font-weight: 600; }
+.tiny { font-size: 10px; fill: #334155; }
+.light-text { fill: #e2e8f0; paint-order: stroke; stroke: #0f172a; stroke-width: 2px; }
+.fov { fill: #38bdf8; opacity: .12; transition: opacity .3s, fill .3s; }
+.fov.listening { fill: #a855f7; opacity: .22; }
+.fov.off { opacity: 0; }
+.mic-ring { fill: none; stroke: #a855f7; stroke-width: 3; animation: pulse 1.2s ease-out infinite; transform-origin: 440px 36px; }
+@keyframes pulse { from { transform: scale(.8); opacity: 1; } to { transform: scale(2.2); opacity: 0; } }
+.cam-badge { font-size: 11px; fill: #0f172a; font-weight: 600; paint-order: stroke; stroke: #f8fafc; stroke-width: 3px; }
+.bubble-text { font-size: 14px; fill: #fff; font-weight: 700; }
+#dark { transition: opacity .6s; pointer-events: none; }
+#lightGlow { transition: opacity .6s; pointer-events: none; }
+.clickable { cursor: pointer; }
+#personImg { transition: opacity .4s; }
+.scene-label { fill: #0f172a; font-size: 13px; font-weight: 600; paint-order: stroke; stroke: #f8fafc; stroke-width: 3px; }
