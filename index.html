@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ko"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>BedLight AI</title><meta name="description" content="카메라가 누운 자세를 감지하면 그때만 마이크를 켜고, 소리 명령으로 조명을 끄는 Edge AI 스마트 침실 프로토타입"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}html{scroll-behavior:smooth;}section[id]{scroll-margin-top:5rem;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-primary": "#3c2f00", "on-primary-fixed-variant": "#574500", "primary": "#ffecb9", "primary-fixed-dim": "#eec200", "on-error-container": "#ffdad6", "outline-variant": "#4d4632", "outline": "#9a9078", "secondary-container": "#6f00be", "on-primary-container": "#6c5700", "secondary": "#ddb7ff", "error-container": "#93000a", "surface-container-highest": "#2f3445", "on-primary-fixed": "#231b00", "on-background": "#dde2f8", "inverse-surface": "#dde2f8", "secondary-fixed-dim": "#ddb7ff", "surface-container": "#191f2f", "on-error": "#690005", "surface-container-low": "#151b2b", "on-tertiary-container": "#006083", "tertiary-container": "#99d9ff", "background": "#0d1322", "on-tertiary-fixed-variant": "#004c69", "surface-tint": "#eec200", "on-surface-variant": "#d1c6ab", "on-surface": "#dde2f8", "inverse-primary": "#735c00", "tertiary": "#dbf0ff", "surface": "#0d1322", "tertiary-fixed": "#c4e7ff", "on-tertiary": "#00354a", "on-secondary": "#490080", "primary-container": "#facc15", "surface-variant": "#2f3445", "surface-container-high": "#242a3a", "primary-fixed": "#ffe083", "on-secondary-fixed": "#2c0051", "surface-bright": "#33394a", "on-secondary-container": "#d6a9ff", "inverse-on-surface": "#2a3040", "surface-container-lowest": "#080e1d", "surface-dim": "#0d1322", "on-tertiary-fixed": "#001e2c", "secondary-fixed": "#f0dbff", "on-secondary-fixed-variant": "#6900b3", "error": "#ffb4ab", "tertiary-fixed-dim": "#7bd0ff" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin-mobile": "1.25rem", "space-xl": "2.5rem", "margin": "3rem", "gutter-mobile": "1rem", "gutter": "1.5rem", "space-xs": "0.25rem", "space-md": "1rem", "space-sm": "0.5rem", "space-lg": "1.5rem" }, "fontFamily": { "body-lg": [ "Inter" ], "body-md": [ "Inter" ], "label-mono-sm": [ "JetBrains Mono" ], "headline-lg-mobile": [ "Inter" ], "headline-md": [ "Inter" ], "label-mono-lg": [ "JetBrains Mono" ], "display-hero-mobile": [ "Inter" ], "body-sm": [ "Inter" ], "display-hero": [ "Inter" ], "headline-lg": [ "Inter" ], "headline-sm": [ "Inter" ] }, "fontSize": { "body-lg": [ "18px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "400" } ], "body-md": [ "15px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" } ], "label-mono-sm": [ "11px", { "lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "500" } ], "headline-lg-mobile": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "headline-md": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "500" } ], "label-mono-lg": [ "14px", { "lineHeight": "20px", "letterSpacing": "-0.01em", "fontWeight": "500" } ], "display-hero-mobile": [ "36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "body-sm": [ "13px", { "lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400" } ], "display-hero": [ "56px", { "lineHeight": "64px", "letterSpacing": "-0.03em", "fontWeight": "600" } ], "headline-lg": [ "36px", { "lineHeight": "44px", "letterSpacing": "-0.025em", "fontWeight": "600" } ], "headline-sm": [ "20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "500" } ] } } } };</script></head><body class="bg-surface font-body-md text-on-surface antialiased selection:bg-primary-container selection:text-on-primary-container min-h-screen flex flex-col relative"><div class="pointer-events-none fixed inset-0 z-0 overflow-hidden"><div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[720px] h-[360px] bg-primary-container/5 rounded-full blur-[120px]"></div><div class="absolute top-1/3 -left-48 w-[480px] h-[480px] bg-secondary-container/10 rounded-full blur-[140px]"></div></div><header class="fixed top-0 left-0 right-0 z-50 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 max-w-[1240px] mx-auto px-gutter flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-md shrink-0"><div class="flex items-center gap-space-xs"><div class="relative flex items-center justify-center w-8 h-8 rounded-lg bg-surface-container"><span class="material-symbols-outlined text-primary-container text-[20px] drop-shadow-[0_0_12px_rgba(250,204,21,0.65)]">light</span></div><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight font-semibold">BedLight <span class="text-primary-container">AI</span></span></div><div class="hidden sm:flex items-center gap-space-xs px-space-xs py-0.5 rounded-full bg-surface-container-high"><span class="w-1.5 h-1.5 rounded-full bg-tertiary-fixed-dim animate-pulse"></span><span class="font-label-mono-sm text-label-mono-sm text-tertiary-fixed-dim">EDGE NPU</span></div></div><nav class="hidden lg:flex items-center gap-space-xs p-1 rounded-full bg-surface-container-low" data-active-classes="text-primary font-medium bg-surface-container"><a aria-current="page" class="px-space-md py-1.5 rounded-full transition-colors text-primary font-medium bg-surface-container" data-path="overview" href="#overview">소개</a><a class="px-space-md py-1.5 rounded-full font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" data-path="how-it-works" href="#how-it-works">작동 방식</a><a class="px-space-md py-1.5 rounded-full font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" data-path="architecture" href="#architecture">기술</a><a class="px-space-md py-1.5 rounded-full font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" data-path="demo" href="#demo">데모</a><a class="px-space-md py-1.5 rounded-full font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" data-path="status" href="#status">프로젝트 현황</a></nav><div class="flex items-center gap-space-sm shrink-0"><a target="_blank" rel="noopener noreferrer" class="hidden md:inline-flex items-center gap-space-xs px-space-md py-2 rounded-lg bg-surface-container font-label-mono-sm text-label-mono-sm text-on-surface hover:bg-surface-container-high hover:text-primary transition-colors" data-path="repository" href="https://github.com/david-laugh/bedlight-ai"><span class="material-symbols-outlined text-[16px]">terminal</span><span>GitHub</span></a><a class="inline-flex items-center gap-space-xs px-space-md py-2 rounded-lg bg-primary-container text-on-primary-container font-body-sm text-body-sm font-medium hover:bg-primary hover:text-on-primary transition-all shadow-[0_0_16px_rgba(250,204,21,0.25)]" data-path="demo" href="#demo"><span class="material-symbols-outlined text-[18px]">play_circle</span><span>데모 체험</span></a></div></div></header><main class="relative z-10 w-full pt-16 flex-1 flex flex-col"><div class="flex flex-col w-full">
+<!-- HERO SECTION -->
+<section id="overview" class="relative w-full max-w-[1240px] mx-auto px-gutter py-space-xl overflow-hidden">
+<!-- Ambient Backdrop Blooms -->
+<div class="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[800px] h-[380px] bg-primary-container/10 rounded-full blur-[110px]"></div>
+<div class="pointer-events-none absolute top-1/2 right-4 w-[420px] h-[420px] bg-secondary-container/15 rounded-full blur-[130px]"></div>
+<div class="relative z-10 flex flex-col items-center text-center">
+<!-- Badge -->
+<div class="inline-flex items-center gap-space-xs px-space-md py-1 rounded-full bg-surface-container-high border-0 shadow-md">
+<span class="w-2 h-2 rounded-full bg-primary-container animate-ping"></span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary tracking-wider uppercase font-semibold">Physical AI Prototype v1.0 • Edge AI Smart Bedroom</span>
+</div>
+<!-- Headline -->
+<h1 class="mt-space-md font-display-hero text-display-hero text-on-surface tracking-tight max-w-4xl">
+        누우면 듣고, <span class="text-primary-container drop-shadow-[0_0_20px_rgba(250,204,21,0.35)]">박수 두 번</span>이면 불이 꺼집니다
+      </h1>
+<!-- Subheadline -->
+<p class="mt-space-sm font-body-lg text-body-lg text-on-surface-variant max-w-3xl leading-relaxed">
+        카메라가 누운 자세를 감지하면 그때만 마이크를 켜고, 박수 두 번을 인식해 조명을 끄는 Edge AI 스마트 침실 프로토타입
+      </p>
+<!-- CTAs -->
+<div class="mt-space-lg flex flex-wrap items-center justify-center gap-space-md">
+<a class="px-6 py-3.5 rounded-xl bg-primary-container text-on-primary-container font-headline-sm text-headline-sm font-bold shadow-[0_0_28px_rgba(250,204,21,0.3)] hover:bg-primary hover:text-on-primary transition-all duration-200" href="#how-it-works">
+          작동 방식 보기
+        </a>
+<a class="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-surface-container-high text-on-surface font-body-md text-body-md hover:bg-surface-variant hover:text-primary transition-all duration-200 shadow-md" href="#demo">
+<span class="material-symbols-outlined text-[20px] text-primary-container">play_circle</span>
+<span>데모 화면</span>
+</a>
+</div>
+</div>
+<!-- Bed Visual Illustration Container -->
+<div class="relative mt-space-xl max-w-4xl mx-auto rounded-2xl bg-surface-container-lowest p-space-md shadow-2xl">
+<!-- Ambient Lighting Cones inside Schematic -->
+<div class="relative w-full h-[400px] md:h-[480px] rounded-xl bg-surface-container-low overflow-hidden flex items-center justify-center">
+<!-- Grid overlay pattern -->
+<div class="absolute inset-0 opacity-15 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:20px_20px]"></div>
+<!-- Ceiling Lamp Amber Cone (Simulated Top-Down) -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[180px] border-l-transparent border-r-[180px] border-r-transparent border-t-[340px] border-t-primary-container/10 blur-xl pointer-events-none"></div>
+<div class="absolute top-4 left-1/2 -translate-x-1/2 flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-primary-container shadow-[0_0_32px_rgba(250,204,21,0.8)] flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container text-[18px]">light</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-primary-container mt-1">CEILING LAMP · ON (2700K)</span>
+</div>
+<!-- Perimeter Wall Mount: XIAO ESP32S3 Camera -->
+<div class="absolute top-8 left-10 md:left-20 flex flex-col items-start z-20">
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-highest shadow-lg">
+<span class="material-symbols-outlined text-secondary text-[16px]">videocam</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface font-semibold">XIAO ESP32S3 Sense</span>
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim animate-pulse"></span>
+</div>
+<!-- Camera FOV cone in soft cyan/violet -->
+<div class="w-48 h-64 mt-1 bg-gradient-to-br from-secondary/15 via-tertiary-container/10 to-transparent [clip-path:polygon(0%_0%,100%_70%,80%_100%,0%_30%)] pointer-events-none blur-sm"></div>
+</div>
+<!-- Virtual Bed Structure -->
+<div class="relative w-64 md:w-80 h-72 rounded-2xl bg-surface-container p-3 shadow-xl flex flex-col justify-between">
+<!-- Pillow section -->
+<div class="w-full flex justify-center gap-3">
+<div class="w-24 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center">
+<span class="font-label-mono-sm text-[10px] text-outline">PILLOW L</span>
+</div>
+<div class="w-24 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center">
+<span class="font-label-mono-sm text-[10px] text-outline">PILLOW R</span>
+</div>
+</div>
+<!-- Abstract Person Figure (Lying Position) -->
+<div class="relative w-full flex-1 flex flex-col items-center justify-center py-2">
+<!-- Head -->
+<div class="w-9 h-9 rounded-full bg-on-surface-variant/40 shadow-inner"></div>
+<!-- Body / Blanket -->
+<div class="w-36 h-28 mt-2 rounded-xl bg-surface-container-high relative overflow-hidden flex flex-col items-center justify-center shadow-lg">
+<div class="absolute inset-0 bg-gradient-to-t from-primary-container/10 via-transparent to-transparent"></div>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant">침대 수면자 (Lying Pose)</span>
+<!-- Sound wave micro-indicator -->
+<div class="flex items-center gap-1 mt-2">
+<span class="w-1 h-3 bg-secondary rounded-full animate-bounce"></span>
+<span class="w-1 h-5 bg-secondary rounded-full animate-bounce [animation-delay:150ms]"></span>
+<span class="w-1 h-2 bg-secondary rounded-full animate-bounce [animation-delay:300ms]"></span>
+</div>
+</div>
+</div>
+<!-- Footboard Tag -->
+<div class="text-center">
+<span class="font-label-mono-sm text-[10px] text-outline">SMART BED PERIMETER</span>
+</div>
+</div>
+<!-- Real-time Status Overlay Pill -->
+<div class="absolute bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-lg z-30">
+<div class="flex items-center justify-between gap-3 px-4 py-3 rounded-full bg-surface-container-highest/95 backdrop-blur-md shadow-2xl">
+<div class="flex items-center gap-2.5 truncate">
+<span class="relative flex h-3 w-3 shrink-0">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-secondary"></span>
+</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary font-semibold truncate">
+                STATUS: 누운 자세 감지 (Fall Detected) → 마이크 활성화 4.8s 남음
+              </span>
+</div>
+<div class="shrink-0 px-2.5 py-0.5 rounded-full bg-secondary-container/40">
+<span class="font-label-mono-sm text-[10px] text-secondary font-mono">MIC GATE OPEN</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- PROBLEM -> SOLUTION SECTION (3 CARDS) -->
+<section class="w-full max-w-[1240px] mx-auto px-gutter py-space-xl">
+<div class="flex flex-col mb-space-lg">
+<span class="font-label-mono-sm text-label-mono-sm text-primary uppercase tracking-widest font-semibold">Problem &amp; Solution</span>
+<h2 class="mt-space-xs font-headline-lg text-headline-lg text-on-surface">침실의 어두운 밤을 위한 가장 정직한 물리 인공지능</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+<!-- Card 1 -->
+<div class="relative flex flex-col justify-between p-space-lg rounded-2xl bg-surface-container shadow-xl overflow-hidden group hover:bg-surface-container-high transition-colors">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary-container/5 rounded-full blur-2xl pointer-events-none"></div>
+<div>
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center mb-space-md text-primary-container">
+<span class="material-symbols-outlined text-[28px]">bed</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold leading-snug">
+            침대에서 일어나 스위치까지 가지 않아도 됩니다
+          </h3>
+<p class="mt-space-sm font-body-md text-body-md text-on-surface-variant leading-relaxed">
+            피곤한 밤, 침대에 눕는 순간 물리적 스위치를 끄러 다시 일어날 필요가 없습니다. 완전한 핸즈프리 취침 환경을 제공합니다.
+          </p>
+</div>
+<div class="mt-space-lg pt-space-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[16px]">touch_app</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">스위치 왕복 이동 동선 영구 제거</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="relative flex flex-col justify-between p-space-lg rounded-2xl bg-surface-container shadow-xl overflow-hidden group hover:bg-surface-container-high transition-colors">
+<div class="absolute top-0 right-0 w-32 h-32 bg-secondary/10 rounded-full blur-2xl pointer-events-none"></div>
+<div>
+<div class="w-12 h-12 rounded-xl bg-secondary-container/40 flex items-center justify-center mb-space-md text-secondary">
+<span class="material-symbols-outlined text-[28px]">mic_none</span>
+</div>
+<div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-secondary-container/30 mb-2">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-label-mono-sm text-[11px] text-secondary font-medium">조건부 마이크 활성화</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold leading-snug">
+            항상 듣지 않습니다 — 누웠을 때만 마이크가 켜집니다
+          </h3>
+<p class="mt-space-sm font-body-md text-body-md text-on-surface-variant leading-relaxed">
+            일반 스마트 스피커와 달리 24시간 도청 위험이 없습니다. Vision AI가 누운 자세를 판별한 직후에만 마이크 게이트가 열립니다.
+          </p>
+</div>
+<div class="mt-space-lg pt-space-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[16px]">lock_clock</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">수면 전 게이트 오픈 시에만 오디오 입력</span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="relative flex flex-col justify-between p-space-lg rounded-2xl bg-surface-container shadow-xl overflow-hidden group hover:bg-surface-container-high transition-colors">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary-container/10 rounded-full blur-2xl pointer-events-none"></div>
+<div>
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center mb-space-md text-primary">
+<span class="material-symbols-outlined text-[28px]">power_settings_new</span>
+</div>
+<div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container-high mb-2">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+<span class="font-label-mono-sm text-[11px] text-primary-container font-medium">웜 앰버 소등 게이트</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold leading-snug">
+            불이 꺼지면 감지도 멈춥니다 — 필요할 때만 동작
+          </h3>
+<p class="mt-space-sm font-body-md text-body-md text-on-surface-variant leading-relaxed">
+            박수 두 번으로 소등이 완료되면 ESP32 카메라 감지와 오디오 녹음 파이프라인이 즉시 완전 중단되어 전력과 프라이버시를 모두 보호합니다.
+          </p>
+</div>
+<div class="mt-space-lg pt-space-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[16px]">power_off</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary">소등 후 센서 슬립 • 대기 전력 최소화</span>
+</div>
+</div>
+</div>
+</section>
+<!-- HOW IT WORKS (HORIZONTAL 5-STEP FLOW) -->
+<section class="w-full max-w-[1240px] mx-auto px-gutter py-space-xl" id="how-it-works">
+<div class="flex flex-col text-center items-center mb-space-lg">
+<span class="font-label-mono-sm text-label-mono-sm text-primary uppercase tracking-widest font-semibold">Sequence Pipeline</span>
+<h2 class="mt-space-xs font-headline-lg text-headline-lg text-on-surface">5단계 엣지-서버 자율 제어 루프</h2>
+<p class="mt-space-xs font-body-md text-body-md text-on-surface-variant max-w-xl">
+        취침 전 조명이 켜진 상태부터 박수 두 번으로 완전히 소등될 때까지 일어나는 순차 프로세스
+      </p>
+</div>
+<!-- 5 Step Container -->
+<div class="grid grid-cols-1 md:grid-cols-5 gap-space-sm relative">
+<!-- Step 1 -->
+<div class="flex flex-col p-space-md rounded-2xl bg-surface-container shadow-md justify-between">
+<div>
+<div class="flex items-center justify-between mb-3">
+<span class="font-label-mono-lg text-label-mono-lg text-primary-container font-bold">STEP 01</span>
+<div class="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined text-[18px]">photo_camera</span>
+</div>
+</div>
+<h4 class="font-headline-sm text-[16px] leading-tight text-on-surface font-semibold">
+            ① 조명 ON → ESP32 카메라가 감시 시작
+          </h4>
+<p class="mt-space-xs font-body-sm text-body-sm text-on-surface-variant">
+            방 조명이 켜져 있을 때만 센서가 구동되어 취침 대기 상태를 검출합니다.
+          </p>
+</div>
+<div class="mt-space-md pt-space-xs text-right">
+<span class="material-symbols-outlined text-outline-variant text-[20px] hidden md:inline">arrow_forward</span>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="flex flex-col p-space-md rounded-2xl bg-surface-container shadow-md justify-between">
+<div>
+<div class="flex items-center justify-between mb-3">
+<span class="font-label-mono-lg text-label-mono-lg text-secondary font-bold">STEP 02</span>
+<div class="w-8 h-8 rounded-lg bg-secondary-container/40 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[18px]">airline_seat_flat</span>
+</div>
+</div>
+<h4 class="font-headline-sm text-[16px] leading-tight text-on-surface font-semibold">
+            ② 누운 자세(Fall) 감지 → 마이크 ON
+          </h4>
+<p class="mt-space-xs font-body-sm text-body-sm text-on-surface-variant">
+            FOMO 비전 모델이 수면 자세를 판별하면 마이크를 켜고 마지막 감지 후 5초를 유지합니다.
+          </p>
+</div>
+<div class="mt-space-md pt-space-xs text-right">
+<span class="material-symbols-outlined text-outline-variant text-[20px] hidden md:inline">arrow_forward</span>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="flex flex-col p-space-md rounded-2xl bg-surface-container shadow-md justify-between">
+<div>
+<div class="flex items-center justify-between mb-3">
+<span class="font-label-mono-lg text-label-mono-lg text-tertiary font-bold">STEP 03</span>
+<div class="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[18px]">graphic_eq</span>
+</div>
+</div>
+<h4 class="font-headline-sm text-[16px] leading-tight text-on-surface font-semibold">
+            ③ 1초 단위 오디오를 중앙 서버로 전송
+          </h4>
+<p class="mt-space-xs font-body-sm text-body-sm text-on-surface-variant">
+            PDM 마이크로 16kHz 청크 데이터를 손실 없이 로컬 허브로 스트리밍합니다.
+          </p>
+</div>
+<div class="mt-space-md pt-space-xs text-right">
+<span class="material-symbols-outlined text-outline-variant text-[20px] hidden md:inline">arrow_forward</span>
+</div>
+</div>
+<!-- Step 4 -->
+<div class="flex flex-col p-space-md rounded-2xl bg-surface-container shadow-md justify-between">
+<div>
+<div class="flex items-center justify-between mb-3">
+<span class="font-label-mono-lg text-label-mono-lg text-primary-fixed font-bold">STEP 04</span>
+<div class="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary-fixed">
+<span class="material-symbols-outlined text-[18px]">celebration</span>
+</div>
+</div>
+<h4 class="font-headline-sm text-[16px] leading-tight text-on-surface font-semibold">
+            ④ 서버 AI가 ‘박수 두 번’ 인식
+          </h4>
+<p class="mt-space-xs font-body-sm text-body-sm text-on-surface-variant">
+            딥러닝 오디오 분류 모델이 13ms 초저지연으로 이중 박수 신호를 추출합니다.
+          </p>
+</div>
+<div class="mt-space-md pt-space-xs text-right">
+<span class="material-symbols-outlined text-outline-variant text-[20px] hidden md:inline">arrow_forward</span>
+</div>
+</div>
+<!-- Step 5 -->
+<div class="flex flex-col p-space-md rounded-2xl bg-surface-container shadow-md justify-between">
+<div>
+<div class="flex items-center justify-between mb-3">
+<span class="font-label-mono-lg text-label-mono-lg text-primary-container font-bold">STEP 05</span>
+<div class="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined text-[18px]">bedtime</span>
+</div>
+</div>
+<h4 class="font-headline-sm text-[16px] leading-tight text-on-surface font-semibold">
+            ⑤ 조명 OFF → ESP32 감지·녹음 중단
+          </h4>
+<p class="mt-space-xs font-body-sm text-body-sm text-on-surface-variant">
+            스마트 조명이 즉시 꺼지며 카메라와 오디오 처리가 완전히 절전 슬립에 진입합니다.
+          </p>
+</div>
+<div class="mt-space-md pt-space-xs text-right">
+<span class="material-symbols-outlined text-primary-container text-[20px] hidden md:inline">check_circle</span>
+</div>
+</div>
+</div>
+<!-- Bottom Caption -->
+<div class="mt-space-md text-center">
+<span class="font-body-md text-body-md text-on-surface-variant font-medium">
+        ∗ 벽 스위치를 다시 켜면 감시를 재개합니다
+      </span>
+</div>
+</section>
+<!-- ARCHITECTURE SECTION -->
+<section id="architecture" class="w-full max-w-[1240px] mx-auto px-gutter py-space-xl">
+<div class="flex flex-col mb-space-lg">
+<span class="font-label-mono-sm text-label-mono-sm text-primary uppercase tracking-widest font-semibold">Technical Architecture</span>
+<h2 class="mt-space-xs font-headline-lg text-headline-lg text-on-surface">모듈식 분산 엣지-서버 구조</h2>
+<p class="mt-space-xs font-body-md text-body-md text-on-surface-variant max-w-2xl">
+        경량 엣지 센서와 로컬 도커 서비스 간 명확한 프로토콜 분리로 무결성과 반응성을 보장합니다.
+      </p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-11 gap-space-sm items-center">
+<!-- Block 1: Edge Device -->
+<div class="lg:col-span-3 p-space-lg rounded-2xl bg-surface-container shadow-xl flex flex-col justify-between min-h-[220px]">
+<div>
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-mono-sm text-label-mono-sm text-tertiary-fixed-dim font-bold tracking-wider">[EDGE DEVICE]</span>
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim"></span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">XIAO ESP32S3 Sense</h3>
+<p class="mt-space-xs font-body-sm text-body-sm text-on-surface-variant">
+            카메라 + Vision AI (Edge Impulse FOMO), PDM 마이크
+          </p>
+</div>
+<div class="mt-space-md pt-space-xs">
+<span class="font-label-mono-sm text-label-mono-sm text-outline">온디바이스 비전 추론, 실시간 버퍼링</span>
+</div>
+</div>
+<!-- Arrow 1 with Protocol Badge -->
+<div class="lg:col-span-1 flex flex-col items-center justify-center py-2 lg:py-0">
+<span class="font-label-mono-sm text-[10px] text-primary text-center px-2 py-1 rounded bg-surface-container-high mb-1">
+          HTTP 오디오 청크 (1초 단위) &amp; MQTT 상태
+        </span>
+<span class="material-symbols-outlined text-outline text-[24px] rotate-90 lg:rotate-0">arrow_forward</span>
+</div>
+<!-- Block 2: Server (Docker Compose) -->
+<div class="lg:col-span-3 p-space-lg rounded-2xl bg-surface-container shadow-xl flex flex-col justify-between min-h-[220px]">
+<div>
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary font-bold tracking-wider">[LOCAL SERVER • DOCKER]</span>
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Server (Docker Compose)</h3>
+<p class="mt-space-xs font-body-sm text-body-sm text-on-surface-variant">
+            Voice Service (음성 AI) · MQTT Broker · Controller · DB Writer
+          </p>
+</div>
+<div class="mt-space-md pt-space-xs">
+<span class="font-label-mono-sm text-label-mono-sm text-outline">FastAPI 비동기 처리, 듀얼 클랩 분류 파이프라인</span>
+</div>
+</div>
+<!-- Arrow 2 with Protocol Badge -->
+<div class="lg:col-span-1 flex flex-col items-center justify-center py-2 lg:py-0">
+<span class="font-label-mono-sm text-[10px] text-tertiary text-center px-2 py-1 rounded bg-surface-container-high mb-1">
+          WebSocket 이벤트 &amp; REST
+        </span>
+<span class="material-symbols-outlined text-outline text-[24px] rotate-90 lg:rotate-0">arrow_forward</span>
+</div>
+<!-- Block 3: Cloud & Interface -->
+<div class="lg:col-span-3 p-space-lg rounded-2xl bg-surface-container shadow-xl flex flex-col justify-between min-h-[220px]">
+<div>
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-mono-sm text-label-mono-sm text-primary-container font-bold tracking-wider">[CLOUD &amp; UI]</span>
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Cloud &amp; Interface</h3>
+<p class="mt-space-xs font-body-sm text-body-sm text-on-surface-variant">
+            Supabase (이벤트 로그) · 웹 시뮬레이터
+          </p>
+</div>
+<div class="mt-space-md pt-space-xs">
+<span class="font-label-mono-sm text-label-mono-sm text-outline">실시간 대시보드 모니터링 및 상태 검증</span>
+</div>
+</div>
+</div>
+</section>
+<!-- KEY NUMBERS (4 STAT TILES) -->
+<section class="w-full max-w-[1240px] mx-auto px-gutter py-space-xl">
+<div class="flex flex-col mb-space-lg">
+<span class="font-label-mono-sm text-label-mono-sm text-primary uppercase tracking-widest font-semibold">Empirical Benchmarks</span>
+<h2 class="mt-space-xs font-headline-lg text-headline-lg text-on-surface">측정된 하드웨어 실측 데이터</h2>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- Tile 1 -->
+<div class="p-space-lg rounded-2xl bg-surface-container shadow-xl relative overflow-hidden flex flex-col justify-between">
+<div class="absolute -right-6 -bottom-6 w-24 h-24 bg-primary-container/10 rounded-full blur-xl pointer-events-none"></div>
+<div>
+<span class="font-label-mono-sm text-label-mono-sm text-primary-container uppercase font-semibold">Vision Latency</span>
+<div class="mt-space-xs font-display-hero text-display-hero text-on-surface font-bold tracking-tight">~180<span class="text-headline-sm text-primary-container font-normal">ms</span></div>
+</div>
+<div class="mt-space-md">
+<h4 class="font-headline-sm text-[16px] text-on-surface font-medium leading-snug">온디바이스 Vision 추론 시간</h4>
+<p class="mt-1 font-body-sm text-body-sm text-on-surface-variant">XIAO ESP32S3 FOMO 모델</p>
+</div>
+</div>
+<!-- Tile 2 -->
+<div class="p-space-lg rounded-2xl bg-surface-container shadow-xl relative overflow-hidden flex flex-col justify-between">
+<div class="absolute -right-6 -bottom-6 w-24 h-24 bg-tertiary-fixed-dim/10 rounded-full blur-xl pointer-events-none"></div>
+<div>
+<span class="font-label-mono-sm text-label-mono-sm text-tertiary-fixed-dim uppercase font-semibold">Audio Reliability</span>
+<div class="mt-space-xs font-display-hero text-display-hero text-on-surface font-bold tracking-tight">0<span class="text-headline-sm text-tertiary-fixed-dim font-normal">건</span></div>
+</div>
+<div class="mt-space-md">
+<h4 class="font-headline-sm text-[16px] text-on-surface font-medium leading-snug">355초 연속 녹음 중 오디오 누락</h4>
+<p class="mt-1 font-body-sm text-body-sm text-on-surface-variant">신뢰성 높은 PDM DMA 버퍼링</p>
+</div>
+</div>
+<!-- Tile 3 -->
+<div class="p-space-lg rounded-2xl bg-surface-container shadow-xl relative overflow-hidden flex flex-col justify-between">
+<div class="absolute -right-6 -bottom-6 w-24 h-24 bg-secondary/15 rounded-full blur-xl pointer-events-none"></div>
+<div>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase font-semibold">Mic Timeout Gate</span>
+<div class="mt-space-xs font-display-hero text-display-hero text-on-surface font-bold tracking-tight">5<span class="text-headline-sm text-secondary font-normal">초</span></div>
+</div>
+<div class="mt-space-md">
+<h4 class="font-headline-sm text-[16px] text-on-surface font-medium leading-snug">마지막 감지 이후 마이크 유지 시간</h4>
+<p class="mt-1 font-body-sm text-body-sm text-on-surface-variant">부드러운 취침 경험을 위한 잔여 타이머</p>
+</div>
+</div>
+<!-- Tile 4 -->
+<div class="p-space-lg rounded-2xl bg-surface-container shadow-xl relative overflow-hidden flex flex-col justify-between">
+<div class="absolute -right-6 -bottom-6 w-24 h-24 bg-primary/10 rounded-full blur-xl pointer-events-none"></div>
+<div>
+<span class="font-label-mono-sm text-label-mono-sm text-primary uppercase font-semibold">Audio Inference</span>
+<div class="mt-space-xs font-display-hero text-display-hero text-on-surface font-bold tracking-tight">13<span class="text-headline-sm text-primary font-normal">ms</span></div>
+</div>
+<div class="mt-space-md">
+<h4 class="font-headline-sm text-[16px] text-on-surface font-medium leading-snug">서버 음성 AI 추론 시간</h4>
+<p class="mt-1 font-body-sm text-body-sm text-on-surface-variant">경량 오디오 임베딩 모델</p>
+</div>
+</div>
+</div>
+<!-- Footnote -->
+<p class="mt-space-md font-body-sm text-body-sm text-on-surface-variant">
+      ∗ 프로토타입 환경에서 측정한 값입니다.
+    </p>
+</section>
+<!-- TECH STACK SECTION -->
+<section class="w-full max-w-[1240px] mx-auto px-gutter py-space-xl">
+<div class="flex flex-col mb-space-md">
+<span class="font-label-mono-sm text-label-mono-sm text-primary uppercase tracking-widest font-semibold">Technology Stack</span>
+<h2 class="mt-space-xs font-headline-lg text-headline-lg text-on-surface">사용한 오픈소스 &amp; 하드웨어 프레임워크</h2>
+</div>
+<div class="flex flex-wrap gap-space-sm items-center">
+<div class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-container shadow-md hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-primary-container text-[18px]">memory</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface font-medium">XIAO ESP32S3 Sense</span>
+</div>
+<div class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-container shadow-md hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-secondary text-[18px]">neurology</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface font-medium">Edge Impulse</span>
+</div>
+<div class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-container shadow-md hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-tertiary-fixed-dim text-[18px]">developer_board</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface font-medium">FreeRTOS</span>
+</div>
+<div class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-container shadow-md hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-primary text-[18px]">code</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface font-medium">Python FastAPI</span>
+</div>
+<div class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-container shadow-md hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-secondary-fixed text-[18px]">sync_alt</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface font-medium">MQTT (Mosquitto)</span>
+</div>
+<div class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-container shadow-md hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-tertiary text-[18px]">inventory_2</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface font-medium">Docker Compose</span>
+</div>
+<div class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-container shadow-md hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-primary-container text-[18px]">database</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface font-medium">Supabase</span>
+</div>
+<div class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-container shadow-md hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-outline text-[18px]">terminal</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface font-medium">GitHub Actions</span>
+</div>
+</div>
+</section>
+<!-- DEMO DASHBOARD (WEB SIMULATOR MOCKUP) -->
+<section class="w-full max-w-[1240px] mx-auto px-gutter py-space-xl" id="demo">
+<div class="flex flex-col mb-space-lg text-center items-center">
+<span class="font-label-mono-sm text-label-mono-sm text-primary uppercase tracking-widest font-semibold">Live Simulation</span>
+<h2 class="mt-space-xs font-headline-lg text-headline-lg text-on-surface">실시간 디지털 트윈 시뮬레이터</h2>
+<p class="mt-space-xs font-body-md text-body-md text-on-surface-variant max-w-xl">
+        가상 시뮬레이터에서 조명·감지·음성 인식 상태를 실시간으로 확인
+      </p>
+</div>
+<!-- Browser Frame Mockup -->
+<div class="w-full rounded-2xl bg-surface-container-lowest shadow-2xl overflow-hidden">
+<!-- Simulated Browser Bar -->
+<div class="px-space-md py-3 bg-surface-container-high flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-error"></div>
+<div class="w-3 h-3 rounded-full bg-primary-container"></div>
+<div class="w-3 h-3 rounded-full bg-tertiary-container"></div>
+</div>
+<div class="px-space-md py-1 rounded-md bg-surface-container text-on-surface-variant font-label-mono-sm text-[12px] flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+<span>BedLight Live Twin Simulator - 192.168.1.100:8000</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">refresh</span>
+<span class="material-symbols-outlined text-[16px]">more_vert</span>
+</div>
+</div>
+<!-- Mockup Inner Grid -->
+<div class="p-space-lg grid grid-cols-1 lg:grid-cols-12 gap-space-md">
+<!-- Left: Virtual Bedroom Simulation Visualizer -->
+<div class="lg:col-span-6 p-space-md rounded-xl bg-surface-container-low flex flex-col justify-between min-h-[380px] relative overflow-hidden">
+<div class="flex items-center justify-between z-10">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant font-medium">TOP-DOWN BEDROOM VIEW</span>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-primary-container/20 text-primary-container font-label-mono-sm text-[11px]">LAMP: ON 2700K 80%</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface font-label-mono-sm text-[11px]">WALL SWITCH: ON</span>
+</div>
+</div>
+<!-- Bedroom Blueprint Graphic -->
+<div class="relative w-full h-64 my-auto flex items-center justify-center">
+<!-- Simulated Camera Cone -->
+<div class="absolute -top-4 -left-4 w-72 h-72 bg-gradient-to-br from-secondary/20 via-tertiary/5 to-transparent [clip-path:polygon(0%_0%,100%_40%,60%_100%)] pointer-events-none"></div>
+<!-- Virtual Bed -->
+<div class="relative w-52 h-48 rounded-xl bg-surface-container-high shadow-lg flex flex-col items-center justify-center">
+<!-- Bounding Box around lying user -->
+<div class="relative w-40 h-32 rounded-lg bg-surface-container-highest flex flex-col items-center justify-center shadow-inner">
+<span class="material-symbols-outlined text-secondary text-[32px] animate-pulse">airline_seat_flat</span>
+<span class="font-label-mono-sm text-[11px] text-secondary mt-1">LYING DETECTED [0.94]</span>
+</div>
+<span class="font-label-mono-sm text-[10px] text-outline mt-2">ESP32_FOV_BOX_#01</span>
+</div>
+</div>
+<div class="flex items-center justify-between z-10 pt-2">
+<span class="font-label-mono-sm text-label-mono-sm text-outline">FPS: 24.1 • RESOLUTION: 96x96 GRAYSCALE</span>
+<span class="font-label-mono-sm text-label-mono-sm text-tertiary-fixed-dim">INFERENCE: ON-DEVICE</span>
+</div>
+</div>
+<!-- Right: Telemetry & Live Event Log -->
+<div class="lg:col-span-6 flex flex-col gap-space-sm justify-between">
+<!-- Device status row -->
+<div class="grid grid-cols-2 gap-space-sm">
+<div class="p-space-sm rounded-xl bg-surface-container">
+<span class="font-label-mono-sm text-[11px] text-outline uppercase">ESP32 S3 Status</span>
+<div class="flex items-center gap-2 mt-1">
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim"></span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface font-semibold">Online • 24 FPS • -52dBm</span>
+</div>
+</div>
+<div class="p-space-sm rounded-xl bg-surface-container">
+<span class="font-label-mono-sm text-[11px] text-outline uppercase">Voice AI Pipeline</span>
+<div class="flex items-center gap-2 mt-1">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface font-semibold">Clap v1.2 • Conf: 96.4%</span>
+</div>
+</div>
+</div>
+<!-- Listening Countdown Progress Bar -->
+<div class="p-space-md rounded-xl bg-surface-container">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary font-bold">MIC GATE STATUS : LISTENING</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary font-mono">3.4s 남음</span>
+</div>
+<!-- Progress Track -->
+<div class="w-full h-3 rounded-full bg-surface-container-high overflow-hidden p-0.5">
+<div class="h-full rounded-full bg-gradient-to-r from-secondary to-primary-container w-[68%] transition-all duration-300"></div>
+</div>
+</div>
+<!-- Live Event Log Terminal -->
+<div class="p-space-md rounded-xl bg-surface-container-lowest font-mono flex flex-col justify-between min-h-[160px]">
+<div class="flex items-center justify-between pb-2 mb-2">
+<span class="font-label-mono-sm text-[11px] text-outline">EVENT LOG STREAM</span>
+<span class="font-label-mono-sm text-[10px] text-primary">LIVE • WS_CONNECTED</span>
+</div>
+<div class="flex flex-col gap-1.5 font-label-mono-sm text-label-mono-sm">
+<div class="text-on-surface-variant">
+<span class="text-outline">[23:41:02]</span> <span class="text-secondary font-semibold">Vision:</span> Lying detected (Conf 0.94)
+              </div>
+<div class="text-on-surface-variant">
+<span class="text-outline">[23:41:03]</span> <span class="text-secondary font-semibold">Audio:</span> Mic ON (Timeout 5s)
+              </div>
+<div class="text-primary-container">
+<span class="text-outline">[23:41:05]</span> <span class="font-semibold text-primary-container">Audio:</span> Double-Clap Detected (Conf 0.964)
+              </div>
+<div class="text-primary font-bold">
+<span class="text-outline">[23:41:05]</span> → 소등 판단 → Light OFF (Relay Triggered)
+              </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- PRIVACY & HONESTY (TWO-COLUMN CONTRAST CARD) -->
+<section class="w-full max-w-[1240px] mx-auto px-gutter py-space-xl">
+<div class="flex flex-col mb-space-lg">
+<span class="font-label-mono-sm text-label-mono-sm text-primary uppercase tracking-widest font-semibold">Integrity &amp; Limitations</span>
+<h2 class="mt-space-xs font-headline-lg text-headline-lg text-on-surface">프라이버시 철학과 정직한 한계</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<!-- Left Column: Privacy -->
+<div class="p-space-lg rounded-2xl bg-surface-container shadow-xl flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-2 mb-space-md">
+<span class="text-2xl">🛡️</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">프라이버시 보호 원칙</h3>
+</div>
+<ul class="flex flex-col gap-space-md font-body-md text-body-md text-on-surface-variant">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-tertiary-fixed-dim text-[20px] shrink-0 mt-0.5">verified_user</span>
+<span><strong>카메라 영상은 기기 밖으로 나가지 않습니다</strong> (온디바이스 FOMO 비전 모델 내부에서만 추론 후 즉시 메모리 폐기)</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary text-[20px] shrink-0 mt-0.5">mic_off</span>
+<span><strong>오디오는 누운 상태에서만 수집</strong> (평상시에는 마이크 하드웨어 스트림 차단)</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary-container text-[20px] shrink-0 mt-0.5">no_photography</span>
+<span><strong>원본 오디오는 DB에 저장하지 않습니다</strong> (이벤트 발생 시 메타데이터 및 추론 결과만 Supabase에 기록)</span>
+</li>
+</ul>
+</div>
+<div class="mt-space-lg pt-space-xs">
+<span class="font-label-mono-sm text-label-mono-sm text-tertiary-fixed-dim">ZERO CLOUD STREAMING • EPHEMERAL RAM PROCESSING</span>
+</div>
+</div>
+<!-- Right Column: Current Limitations -->
+<div class="p-space-lg rounded-2xl bg-surface-container shadow-xl flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-2 mb-space-md">
+<span class="text-2xl">⚖️</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">현재 한계 및 연구 과제</h3>
+</div>
+<ul class="flex flex-col gap-space-md font-body-md text-body-md text-on-surface-variant">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-outline text-[20px] shrink-0 mt-0.5">tune</span>
+<span><strong>Vision 모델은 산업현장 낙상 감지용 공개 모델을 사용한 프로토타입</strong>입니다 (침실 전용 데이터 파인튜닝 필요)</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-outline text-[20px] shrink-0 mt-0.5">science</span>
+<span><strong>음성 모델은 소규모 데이터(클래스별 50개)로 학습</strong>했습니다 (잡음 환경 및 다양한 박수 패턴 추가 검증 중)</span>
+</li>
+</ul>
+</div>
+<div class="mt-space-lg pt-space-xs">
+<span class="font-label-mono-sm text-label-mono-sm text-outline">OPEN RESEARCH IN PROGRESS • CONTINUOUS REFINEMENT</span>
+</div>
+</div>
+</div>
+</section>
+<!-- PROJECT STATUS (TIMELINE ROADMAP) -->
+<section id="status" class="w-full max-w-[1240px] mx-auto px-gutter py-space-xl">
+<div class="flex flex-col mb-space-lg">
+<span class="font-label-mono-sm text-label-mono-sm text-primary uppercase tracking-widest font-semibold">Milestones</span>
+<h2 class="mt-space-xs font-headline-lg text-headline-lg text-on-surface">프로젝트 개발 진행 현황</h2>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-sm">
+<!-- Checkpoint 1 -->
+<div class="p-space-md rounded-2xl bg-surface-container shadow-md flex flex-col justify-between min-h-[160px]">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-primary font-label-mono-sm text-[11px] font-bold">✓ 완료</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">MILESTONE 1</span>
+</div>
+<h4 class="font-headline-sm text-[16px] text-on-surface font-semibold">데이터셋 수집</h4>
+<p class="mt-1 font-body-sm text-body-sm text-on-surface-variant">기본 박수 및 침실 배경음</p>
+</div>
+<div class="mt-space-sm">
+<span class="material-symbols-outlined text-primary text-[18px]">check_circle</span>
+</div>
+</div>
+<!-- Checkpoint 2 -->
+<div class="p-space-md rounded-2xl bg-surface-container shadow-md flex flex-col justify-between min-h-[160px]">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-primary font-label-mono-sm text-[11px] font-bold">✓ 완료</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">MILESTONE 2</span>
+</div>
+<h4 class="font-headline-sm text-[16px] text-on-surface font-semibold">Vision + 조건부 녹음</h4>
+<p class="mt-1 font-body-sm text-body-sm text-on-surface-variant">ESP32 FOMO 추론 연동</p>
+</div>
+<div class="mt-space-sm">
+<span class="material-symbols-outlined text-primary text-[18px]">check_circle</span>
+</div>
+</div>
+<!-- Checkpoint 3 -->
+<div class="p-space-md rounded-2xl bg-surface-container shadow-md flex flex-col justify-between min-h-[160px]">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-primary font-label-mono-sm text-[11px] font-bold">✓ 완료</span>
+<span class="font-label-mono-sm text-label-mono-sm text-outline">MILESTONE 3</span>
+</div>
+<h4 class="font-headline-sm text-[16px] text-on-surface font-semibold">조명 게이트 + 음성 소등</h4>
+<p class="mt-1 font-body-sm text-body-sm text-on-surface-variant">MQTT 및 릴레이 제어 완료</p>
+</div>
+<div class="mt-space-sm">
+<span class="material-symbols-outlined text-primary text-[18px]">check_circle</span>
+</div>
+</div>
+<!-- Checkpoint 4 -->
+<div class="p-space-md rounded-2xl bg-surface-container-high shadow-md flex flex-col justify-between min-h-[160px]">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="px-2 py-0.5 rounded bg-primary-container/20 text-primary-container font-label-mono-sm text-[11px] font-bold">🔄 진행 중</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary-container">CURRENT FOCUS</span>
+</div>
+<h4 class="font-headline-sm text-[16px] text-on-surface font-semibold">실사용 정확도 개선</h4>
+<p class="mt-1 font-body-sm text-body-sm text-on-surface-variant">다양한 수면 자세 및 소음 필터링 튜닝</p>
+</div>
+<div class="mt-space-sm flex items-center gap-1.5 text-primary-container font-label-mono-sm text-[11px]">
+<span class="material-symbols-outlined text-[16px] animate-spin">sync</span>
+<span>진행도 65%</span>
+</div>
+</div>
+</div>
+</section>
+<!-- CTA / FOOTER SUMMARY BANNER -->
+<section class="w-full max-w-[1240px] mx-auto px-gutter pb-space-xl">
+<div class="p-space-lg rounded-2xl bg-surface-container shadow-2xl flex flex-col md:flex-row items-center justify-between gap-space-md">
+<div class="flex flex-col text-center md:text-left">
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">BedLight AI · Physical AI Project 2026</span>
+<span class="font-body-md text-body-md text-on-surface-variant mt-1">Edge Computing &amp; Privacy-Preserving Smart Bedroom Prototype</span>
+</div>
+<a class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-surface-container-high text-on-surface hover:text-primary transition-colors font-label-mono-sm text-label-mono-sm shadow-md" href="https://github.com/david-laugh/bedlight-ai" rel="noopener noreferrer" target="_blank">
+<span class="material-symbols-outlined text-[18px]">terminal</span>
+<span>View Project on GitHub →</span>
+</a>
+</div>
+</section>
+</div></main><footer class="relative z-10 w-full bg-surface-container-lowest mt-auto shadow-[0_-1px_8px_rgba(0,0,0,0.04)]"><div class="max-w-[1240px] mx-auto px-gutter py-space-xl"><div class="grid grid-cols-1 md:grid-cols-12 gap-gutter items-start"><div class="md:col-span-6 flex flex-col gap-space-sm"><div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-primary-container text-[20px] drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]">light</span><span class="font-headline-sm text-headline-sm text-on-surface font-semibold">BedLight AI</span><span class="font-label-mono-sm text-label-mono-sm px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant">v0.4-proto</span></div><p class="font-body-sm text-body-sm text-on-surface-variant max-w-md">수면을 방해하지 않는 온디바이스 음향 인지와 자율 조광을 결합한 엠비언트 하드웨어 프로토타입입니다. 모든 추론 연산은 로컬 기기 내에서 완결됩니다.</p><div class="flex items-center gap-space-xs font-label-mono-sm text-label-mono-sm text-tertiary-fixed-dim"><span class="material-symbols-outlined text-[14px]">lock</span><span>LOCAL INFERENCE ONLY : 0 CLOUD CALLS</span></div></div><div class="md:col-span-3 flex flex-col gap-space-xs"><span class="font-label-mono-sm text-label-mono-sm uppercase text-on-surface font-medium tracking-wider mb-space-xs">내비게이션</span><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors" data-path="overview" href="#overview">소개</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors" data-path="how-it-works" href="#how-it-works">작동 방식</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors" data-path="architecture" href="#architecture">하드웨어 기술 사양</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors" data-path="status" href="#status">로드맵 및 연구 기록</a></div><div class="md:col-span-3 flex flex-col gap-space-xs"><span class="font-label-mono-sm text-label-mono-sm uppercase text-on-surface font-medium tracking-wider mb-space-xs">오픈소스</span><a target="_blank" rel="noopener noreferrer" class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors inline-flex items-center gap-1" data-path="repository" href="https://github.com/david-laugh/bedlight-ai"><span class="material-symbols-outlined text-[16px]">terminal</span>GitHub Repository</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors inline-flex items-center gap-1" data-path="demo" href="#demo"><span class="material-symbols-outlined text-[16px]">speed</span>웹 시뮬레이터</a></div></div><div class="mt-space-lg pt-space-lg flex flex-col sm:flex-row items-center justify-between gap-space-sm bg-surface-container-low px-space-md py-space-sm rounded-lg"><div class="flex flex-col sm:flex-row sm:items-center gap-space-xs sm:gap-space-sm"><span class="font-label-mono-sm text-label-mono-sm text-on-surface">BedLight AI · Physical AI Project 2026</span><span class="hidden sm:inline text-outline-variant">|</span><span class="font-body-sm text-body-sm text-on-surface-variant">본 기기는 개발 중인 연구용 프로토타입이며 의료기기가 아닙니다.</span></div><a target="_blank" rel="noopener noreferrer" class="font-label-mono-sm text-label-mono-sm text-primary hover:text-primary-fixed transition-colors" data-path="repository" href="https://github.com/david-laugh/bedlight-ai">github.com/david-laugh/bedlight-ai →</a></div></div></footer></body></html>
