@@ -1,7 +1,8 @@
 # services/simulator-web
 
-> **상태: PLACEHOLDER** — nginx 가 정적 안내 페이지(`placeholder/index.html`)만 제공한다.
-> 시뮬레이션·WebSocket·조명 제어 로직은 없다.
+> **상태 (펌웨어 0.3 단계): 정적 대시보드 동작** — `site/` (vanilla HTML/JS, 빌드 없음)가 controller WebSocket 상태를 표시한다. 수동 조명 버튼은 source=simulator 이벤트. React+Vite 전환은 예정.
+
+
 
 접속: <http://127.0.0.1:8080> (`SIMULATOR_HOST_PORT` 로 변경 가능)
 

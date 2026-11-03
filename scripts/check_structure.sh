@@ -54,6 +54,12 @@ required_files=(
   firmware/xiao-esp32s3-sense/bedlight/state_manager.h
   firmware/xiao-esp32s3-sense/bedlight/vision_inference.cpp
   firmware/xiao-esp32s3-sense/tests/test_state_manager.cpp
+  contracts/v1/device-runtime-event.schema.json
+  contracts/v1/voice-audio-chunk-response.schema.json
+  docs/runtime-pipeline.md
+  services/controller/app/main.py
+  services/db-writer/app/main.py
+  tests/mock-device/mock_device.py
   services/voice-service/Dockerfile
   services/voice-service/README.md
   services/voice-service/app/main.py

@@ -1,6 +1,8 @@
 # tests/mock-device
 
-> **상태: PLACEHOLDER** — 컨테이너는 안내 메시지만 출력하고 종료한다. MQTT 에 아무것도 발행하지 않는다.
+> **상태 (펌웨어 0.3 단계): 구현됨** — `mock_device.py` 가 시나리오 A/B 를 재현 (`docker compose --profile test run --rm mock-device --scenario B`). 비전 결과는 스크립트, 오디오는 합성 사인파 (학습 데이터 아님). `--drop-seq N` 으로 누락 청크 시험.
+
+
 
 Compose profile `test` 에서만 실행된다:
 

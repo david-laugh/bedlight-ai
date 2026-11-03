@@ -28,6 +28,8 @@ PREFIX_TO_SCHEMA = {
     "event-": "event-envelope.schema.json",
     "status-": "device-status.schema.json",
     "recording-": "voice-recording-response.schema.json",
+    "runtime-": "device-runtime-event.schema.json",
+    "chunk-": "voice-audio-chunk-response.schema.json",
 }
 
 

@@ -58,3 +58,6 @@ tests/performance/results/
 Thumbs.db
 .vscode/
 .idea/
+
+# Runtime data (Fall-triggered audio chunks, db-writer DRY-RUN log)
+runtime-data/

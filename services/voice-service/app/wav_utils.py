@@ -233,6 +233,17 @@ def read_wav_file(path: Path) -> tuple[bytes, WavInfo]:
     return data, parse_wav(data)
 
 
+def pcm16_wav_bytes(samples, sample_rate: int) -> bytes:
+    """Mono 16-bit PCM WAV as bytes (canonical 44-byte header, little-endian)."""
+    out = array("h", samples)
+    if sys.byteorder == "big":
+        out.byteswap()
+    pcm = out.tobytes()
+    header = struct.pack("<4sI4s4sIHHIIHH4sI", b"RIFF", 36 + len(pcm), b"WAVE", b"fmt ", 16, WAVE_FORMAT_PCM, 1,
+                         sample_rate, sample_rate * 2, 2, 16, b"data", len(pcm))
+    return header + pcm
+
+
 def write_pcm16_wav(path: Path, samples, sample_rate: int) -> None:
     """Write mono 16-bit PCM WAV using the standard `wave` module (little-endian)."""
     out = array("h", samples)

@@ -1,21 +1,10 @@
 # BedLight AI — simulator-web
-# 현재: PLACEHOLDER. 정적 안내 페이지(placeholder/index.html)만 제공한다.
-#
-# 향후 React + Vite 도입 시 multi-stage 로 교체:
-#   FROM node:20-alpine AS build
-#   WORKDIR /app
-#   COPY package*.json ./
-#   RUN npm ci
-#   COPY . .
-#   RUN npm run build
-#   FROM nginx:1.27-alpine
-#   COPY --from=build /app/dist /usr/share/nginx/html
+# Static dashboard (vanilla HTML/JS, no build step) that renders controller state over WebSocket.
+# React + Vite migration is still planned; the old placeholder page is kept under placeholder/.
 FROM nginx:1.27-alpine
 
-COPY placeholder/ /usr/share/nginx/html/
+COPY site/ /usr/share/nginx/html/
 
-LABEL org.opencontainers.image.title="bedlight-simulator-web" \
-      org.opencontainers.image.description="PLACEHOLDER static page - simulator not implemented" \
-      bedlight.status="placeholder"
+LABEL org.opencontainers.image.title="bedlight-simulator-web" bedlight.status="static-dashboard"
 
 EXPOSE 80
