@@ -92,7 +92,9 @@ def make_client(tmp_path, clock):
     from app.settings import Settings
 
     def _make(**overrides):
-        settings = Settings(data_dir=tmp_path / "voice", model_dir=tmp_path / "models", **overrides)
+        settings = Settings(
+            data_dir=tmp_path / "voice", model_dir=tmp_path / "models", runtime_dir=tmp_path / "runtime", **overrides
+        )
         return TestClient(create_app(settings, now=clock)), settings
 
     return _make

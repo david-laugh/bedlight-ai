@@ -8,11 +8,15 @@ XIAO ESP32S3 Sense 의 카메라로 사람이 침대에 누운 상태를 감지�
 - **voice-service (중앙 서버)**: WAV 수신·검증·저장, 향후 Edge Impulse KWS 모델로 "off" 인식.
 - **IoT 제어**: controller 가 결과를 검증해 MQTT 로 가상 전등 제어, simulator-web 에서 ON/OFF, Supabase 에 이벤트 저장.
 
-> ## 현재 단계: 음성 데이터셋 수집
+> ## 현재 단계: Fall 감지 → 5초 LISTENING → 런타임 오디오 파이프라인 (펌웨어 0.3)
+> ESP32 Edge Impulse FOMO(Fall/Standing) + 조건부 오디오 청크 전송, controller/db-writer/simulator 구현.
+> 실제 보드에서 Fall 감지 → 5초 LISTENING → 오디오 청크 업로드(누락 0) 확인. Supabase 기록은 마이그레이션 적용 대기. 상세: [docs/runtime-pipeline.md](docs/runtime-pipeline.md)
+>
+> ### 이전 단계: 음성 데이터셋 수집
 > **구현됨**: ESP32 녹음·WAV·업로드 펌웨어 (Core 2.0.17 컴파일 확인), voice-service 업로드 API (테스트·컨테이너 검증),
 > WAV 검증·Edge Impulse 전처리 스크립트, CI.
-> **미검증**: 실제 보드에서의 녹음·업로드 (하드웨어 수동 테스트 필요).
-> **미구현**: Vision, 서버 KWS 추론, controller/db-writer/simulator 로직, mock 이벤트 생성.
+> **검증**: 실제 보드에서 클래스별 50 개 (총 150 개) 녹음·업로드 완료.
+> **현재도 미구현**: 서버 KWS 추론(음성 분류), 음성 기반 자동 소등.
 
 ## 구성
 
@@ -27,10 +31,10 @@ mock-device ──▶ mqtt-broker
 |---|---|---|
 | `voice-service` | Python 3.11 / FastAPI, `0.0.0.0:8001` (LAN) | **동작** (데이터 수집). 추론 미구현 (503) |
 | `mqtt-broker` | Eclipse Mosquitto 2.0 | 동작 (개발용 무인증, `127.0.0.1:1883`) |
-| `controller` | Python 3.11 / FastAPI (예정) | placeholder |
-| `db-writer` | Python 3.11 (예정) | placeholder |
-| `simulator-web` | React + Vite (예정), 현재 nginx 정적 페이지 | placeholder (`127.0.0.1:8080`) |
-| `mock-device` | Python 3.11, compose profile `test` | placeholder |
+| `controller` | Python 3.11 / FastAPI, `127.0.0.1:8000` (WS `/ws`) | 동작: 상태 집계·수동 조명. 자동 소등 미구현 |
+| `db-writer` | Python 3.11, paho-mqtt → Supabase REST | 동작 (Supabase 자격증명 없으면 DRY-RUN) |
+| `simulator-web` | 정적 HTML/JS 대시보드 (React 전환 예정) | 동작 (`127.0.0.1:8080`) |
+| `mock-device` | Python 3.11, compose profile `test` | 동작: 시나리오 A/B (source=mock, 합성 오디오) |
 
 ## 음성 녹음 빠른 시작
 

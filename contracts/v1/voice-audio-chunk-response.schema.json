@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bedlight.local/contracts/v1/voice-audio-chunk-response.schema.json",
+  "title": "BedLight AI Voice Service - runtime audio chunk response v1",
+  "description": "Response body of POST /api/v1/audio/chunks (201 saved, 200 duplicate).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "session_id", "device_id", "sequence", "sample_start", "samples", "duration_ms", "is_final", "session", "timing", "inference"],
+  "properties": {
+    "status": { "enum": ["saved", "duplicate"] },
+    "session_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$" },
+    "device_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,63}$" },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "sample_start": { "type": "integer", "minimum": 0 },
+    "samples": { "type": "integer", "minimum": 0 },
+    "duration_ms": { "type": "integer", "minimum": 0 },
+    "is_final": { "type": "boolean" },
+    "session": {
+      "type": "object",
+      "required": ["session_id", "device_id", "received_chunks", "final_received", "missing_sequences", "discontinuities", "received_samples", "span_samples", "loss_ratio", "dma_overflows", "complete"],
+      "properties": {
+        "received_chunks": { "type": "integer", "minimum": 1 },
+        "final_received": { "type": "boolean" },
+        "missing_sequences": { "type": "array", "items": { "type": "integer" } },
+        "discontinuities": { "type": "array" },
+        "received_samples": { "type": "integer" },
+        "span_samples": { "type": "integer" },
+        "loss_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "dma_overflows": { "type": "integer", "minimum": 0 },
+        "complete": { "type": "boolean" }
+      }
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["receive_ms", "validate_ms", "save_ms", "total_ms"],
+      "properties": {
+        "receive_ms": { "type": "number", "minimum": 0 },
+        "validate_ms": { "type": "number", "minimum": 0 },
+        "save_ms": { "type": "number", "minimum": 0 },
+        "total_ms": { "type": "number", "minimum": 0 }
+      }
+    },
+    "inference": {
+      "type": "object",
+      "required": ["performed"],
+      "properties": { "performed": { "const": false }, "reason": { "type": "string" } }
+    }
+  }
+}

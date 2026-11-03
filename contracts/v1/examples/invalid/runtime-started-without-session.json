@@ -1,0 +1,1 @@
+{"schema_version":"1.2.0","event_id":"a1b2c3d4-0005-4000-8000-000000000005","trace_id":"5d0c7a3e-1f2b-4c3d-9e4f-5a6b7c8d9e0f","source":"device","device_id":"bedlight-01","event_type":"LISTENING_STARTED","model":null,"confidence":0.9,"timestamp_ms":null,"inference_ms":null,"session_id":null,"data":{"hold_ms":5000,"remaining_ms":5000}}

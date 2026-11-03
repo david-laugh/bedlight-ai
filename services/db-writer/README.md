@@ -1,6 +1,8 @@
 # services/db-writer
 
-> **상태: PLACEHOLDER** — 컨테이너는 빌드·실행되지만 대기 프로세스만 동작한다. DB 에 아무것도 쓰지 않는다.
+> **상태 (펌웨어 0.3 단계): 구현됨** — MQTT 구독 → JSON Schema(v1.2 런타임/ v1.0 envelope) 검증 → event_id LRU 중복 제거 → Supabase REST 배치 INSERT(ON CONFLICT DO NOTHING, 5xx/네트워크 지수 백오프 재시도, 4xx 재시도 안 함). `SUPABASE_URL`/`SUPABASE_SECRET_KEY` 가 없으면 **DRY-RUN** (`runtime-data/db-writer/events.jsonl`, Supabase 로 전송 안 함).
+
+
 
 ## 역할 (향후 구현)
 

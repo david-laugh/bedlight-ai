@@ -1,13 +1,12 @@
 # BedLight AI — Docker Compose
 #
-# 현재 단계: 음성 데이터셋 수집.
-#   - mqtt-broker   : 실제 동작 (Eclipse Mosquitto, 개발용 무인증 설정, localhost 바인딩)
-#   - voice-service : 실제 동작 (FastAPI, ESP32 WAV 업로드 수신/검증/저장, 포트 8001 LAN 노출)
-#                     KWS 추론은 미구현 (/api/v1/recognize -> 503)
-#   - controller    : PLACEHOLDER (기능 없음, 대기 프로세스만 실행)
-#   - db-writer     : PLACEHOLDER (기능 없음, 대기 프로세스만 실행, DB 접속 안 함)
-#   - simulator-web : PLACEHOLDER (정적 안내 페이지만 제공)
-#   - mock-device   : PLACEHOLDER (profile "test", 안내 메시지 출력 후 종료)
+# 현재 단계: Fall(Vision) -> LISTENING -> 런타임 오디오 청크 파이프라인.
+#   - mqtt-broker   : Mosquitto (개발용 무인증). ESP32 접속 시 .env 에 MQTT_BIND_ADDR=0.0.0.0 필요
+#   - voice-service : 학습 녹음 업로드 + 런타임 오디오 청크 수신/검증/재구성 (:8001, LAN). KWS 추론 미구현
+#   - controller    : MQTT 상태 집계, WebSocket(:8000) -> simulator, 수동 조명 제어. 자동 소등 미구현
+#   - db-writer     : MQTT 이벤트 -> 검증/중복제거 -> Supabase (자격증명 없으면 DRY-RUN 로컬 파일)
+#   - simulator-web : 정적 대시보드 (:8080)
+#   - mock-device   : profile "test", 펌웨어 0.3 프로토콜 재현 (source=mock, 합성 오디오)
 #
 # 사용:
 #   docker compose up -d --build                 # 기본 서비스
@@ -31,7 +30,9 @@ services:
     container_name: bedlight-mqtt-broker
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${MQTT_HOST_PORT:-1883}:1883"
+      # ESP32 (LAN) must reach the broker: set MQTT_BIND_ADDR=0.0.0.0 in .env (anonymous dev broker - LAN only,
+      # never port-forward). Default stays localhost-only.
+      - "${MQTT_BIND_ADDR:-127.0.0.1}:${MQTT_HOST_PORT:-1883}:1883"
     volumes:
       - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto-data:/mosquitto/data
@@ -52,11 +53,16 @@ services:
     environment:
       <<: *mqtt-env
       SERVICE_NAME: controller
-      # 향후 FastAPI(HTTP/WebSocket) 포트. placeholder 는 포트를 열지 않는다.
-      CONTROLLER_PORT: ${CONTROLLER_PORT:-8000}
-    # 향후 구현 시 활성화:
-    # ports:
-    #   - "127.0.0.1:${CONTROLLER_PORT:-8000}:8000"
+      ROOM_ID: ${ROOM_ID:-bedroom-01}
+      VOICE_SERVICE_URL: http://voice-service:8001
+    ports:
+      - "127.0.0.1:${CONTROLLER_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
     depends_on:
       mqtt-broker:
         condition: service_healthy
@@ -77,6 +83,7 @@ services:
       - "${VOICE_BIND_ADDR:-0.0.0.0}:${VOICE_HOST_PORT:-8001}:8001"
     environment:
       VOICE_DATA_DIR: /data/voice
+      VOICE_RUNTIME_DIR: /data/runtime
       VOICE_MODEL_DIR: /models
       VOICE_UPLOAD_TOKEN: ${VOICE_UPLOAD_TOKEN:-}
       VOICE_ALLOWED_LABELS: off,unknown,noise
@@ -87,6 +94,8 @@ services:
     volumes:
       # Bind mount: recordings persist on the PC in datasets/voice/ across container restarts.
       - ${VOICE_DATASET_DIR:-./datasets/voice}:/data/voice
+      # Runtime (Fall-triggered) audio chunks - kept separate from the training dataset.
+      - ${VOICE_RUNTIME_HOST_DIR:-./runtime-data/audio}:/data/runtime
       # Future Edge Impulse Linux (.eim) model deployment location (read-only).
       - ./models/voice/deploy:/models:ro
     healthcheck:
@@ -100,6 +109,8 @@ services:
   db-writer:
     build:
       context: ./services/db-writer
+      additional_contexts:
+        contracts: ./contracts
     image: bedlight/db-writer:dev
     container_name: bedlight-db-writer
     restart: unless-stopped
@@ -110,6 +121,11 @@ services:
     environment:
       <<: *mqtt-env
       SERVICE_NAME: db-writer
+      DB_WRITER_DRYRUN_FILE: /data/db-writer/events.jsonl
+    user: "${VOICE_UID:-1000}:${VOICE_GID:-1000}"
+    volumes:
+      # DRY-RUN output when Supabase credentials are absent (nothing is sent to Supabase then).
+      - ${DB_WRITER_HOST_DIR:-./runtime-data/db-writer}:/data/db-writer
     depends_on:
       mqtt-broker:
         condition: service_healthy
@@ -137,8 +153,12 @@ services:
       SERVICE_NAME: mock-device
       MOCK_DEVICE_ID: ${MOCK_DEVICE_ID:-mock-xiao-01}
       MOCK_EVENT_SOURCE: mock
+      VOICE_SERVICE_URL: http://voice-service:8001
+      ROOM_ID: ${ROOM_ID:-bedroom-01}
     depends_on:
       mqtt-broker:
+        condition: service_healthy
+      voice-service:
         condition: service_healthy
     networks: [bedlight-net]
 
