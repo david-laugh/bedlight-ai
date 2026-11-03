@@ -80,7 +80,7 @@ jobs:
           mkdir -p runtime-data/db-writer runtime-data/audio
           VOICE_UID=$(id -u); VOICE_GID=$(id -g); export VOICE_UID VOICE_GID
           docker compose up -d --wait --wait-timeout 90 controller db-writer
-          curl -fsS http://127.0.0.1:8000/healthz
+          curl -fsS --retry 10 --retry-delay 2 --retry-all-errors http://127.0.0.1:8000/healthz
           curl -fsS http://127.0.0.1:8000/api/v1/state | python3 -c "import json,sys; s=json.load(sys.stdin); assert s['light']['auto_control'] is False"
           test "$(docker inspect -f '{{.State.Status}}' bedlight-db-writer)" = "running"
           docker compose logs db-writer | grep -q "DRY-RUN"
