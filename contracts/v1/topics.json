@@ -1,0 +1,31 @@
+{
+  "version": "v1",
+  "description": "MQTT topic contract. Machine-readable mirror of docs/interfaces.md.",
+  "topics": [
+    {
+      "pattern": "bedlight/v1/devices/{device_id}/events",
+      "schema": "event-envelope.schema.json",
+      "qos": 1,
+      "retain": false,
+      "publishers": ["esp32", "mock-device"],
+      "subscribers": ["controller", "db-writer"]
+    },
+    {
+      "pattern": "bedlight/v1/devices/{device_id}/status",
+      "schema": "device-status.schema.json",
+      "qos": 1,
+      "retain": true,
+      "last_will": "state=offline",
+      "publishers": ["esp32", "mock-device"],
+      "subscribers": ["controller", "db-writer"]
+    },
+    {
+      "pattern": "bedlight/v1/simulator/{room_id}/events",
+      "schema": "event-envelope.schema.json",
+      "qos": 1,
+      "retain": false,
+      "publishers": ["controller"],
+      "subscribers": ["db-writer"]
+    }
+  ]
+}

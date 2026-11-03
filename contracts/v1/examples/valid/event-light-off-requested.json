@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "event_id": "0b7e4f2a-1c3d-4e5f-8a9b-0c1d2e3f4a04",
+  "trace_id": "3f6c1a2e-8b4d-4c1e-9a7f-2d5e6b7c8a90",
+  "source": "device",
+  "device_id": "xiao-01",
+  "event_type": "LIGHT_OFF_REQUESTED",
+  "sequence": 104,
+  "model": null,
+  "data": {
+    "room_id": "bedroom-01",
+    "light_id": "ceiling",
+    "cause_event_ids": ["0b7e4f2a-1c3d-4e5f-8a9b-0c1d2e3f4a01", "0b7e4f2a-1c3d-4e5f-8a9b-0c1d2e3f4a03"]
+  },
+  "timing": { "device_uptime_ms": 534030, "controller_received_at": "2026-11-03T12:00:00.120Z", "controller_forwarded_at": "2026-11-03T12:00:00.125Z" }
+}

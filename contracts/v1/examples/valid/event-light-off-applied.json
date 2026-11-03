@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0.0",
+  "event_id": "0b7e4f2a-1c3d-4e5f-8a9b-0c1d2e3f4a05",
+  "trace_id": "3f6c1a2e-8b4d-4c1e-9a7f-2d5e6b7c8a90",
+  "source": "simulator",
+  "device_id": "xiao-01",
+  "event_type": "LIGHT_OFF_APPLIED",
+  "sequence": 7,
+  "model": null,
+  "data": { "room_id": "bedroom-01", "light_id": "ceiling", "request_event_id": "0b7e4f2a-1c3d-4e5f-8a9b-0c1d2e3f4a04", "result": "applied" },
+  "timing": { "simulator_received_at": "2026-11-03T12:00:00.130Z", "simulator_applied_at": "2026-11-03T12:00:00.162Z", "render_ms": 32.0 }
+}

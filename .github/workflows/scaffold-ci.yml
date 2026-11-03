@@ -1,0 +1,93 @@
+name: scaffold-ci
+
+# Repository 골격 검증. 현재 단계에서 실제로 실행 가능한 검사만 포함한다.
+#  - 필수 디렉터리/파일 존재
+#  - JSON Schema 자체 유효성 (Draft 2020-12)
+#  - Docker Compose 설정 유효성
+#  - Docker 이미지 빌드 가능 여부
+#  - 컨테이너 기동 smoke test (broker pub/sub 왕복, 정적 페이지 응답, placeholder 프로세스 생존)
+#    ※ placeholder 컨테이너가 떠 있다는 것은 "기능 동작"을 의미하지 않는다.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scaffold-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  structure:
+    name: Repository structure
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check required directories and files
+        run: bash scripts/check_structure.sh
+
+  schemas:
+    name: JSON Schema validity
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r scripts/requirements-ci.txt
+      - name: Validate schemas against Draft 2020-12 metaschema
+        run: python scripts/validate_contracts.py --schemas-only
+
+  compose:
+    name: Compose config, build, smoke
+    runs-on: ubuntu-24.04
+    needs: [structure]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate compose config (default)
+        run: docker compose config --quiet
+
+      - name: Validate compose config (profile test)
+        run: docker compose --profile test config --quiet
+
+      - name: Build all images (incl. profile test)
+        run: docker compose --profile test build
+
+      - name: Start broker and simulator placeholder
+        run: docker compose up -d --wait --wait-timeout 90 mqtt-broker simulator-web
+
+      - name: MQTT pub/sub round trip
+        run: |
+          docker compose exec -T mqtt-broker sh -c '
+            mosquitto_sub -h 127.0.0.1 -t "bedlight/v1/ci/ping" -C 1 -W 10 > /tmp/recv &
+            sleep 1
+            mosquitto_pub -h 127.0.0.1 -t "bedlight/v1/ci/ping" -q 1 -m "ping"
+            wait
+            test "$(cat /tmp/recv)" = "ping"'
+
+      - name: Simulator placeholder page responds
+        run: curl -fsS http://127.0.0.1:8080/ | grep -q "PLACEHOLDER"
+
+      - name: Placeholder service containers stay up
+        run: |
+          docker compose up -d controller db-writer
+          sleep 5
+          for s in controller db-writer; do
+            state=$(docker inspect -f '{{.State.Status}}' "bedlight-$s")
+            echo "$s: $state"
+            test "$state" = "running"
+          done
+          docker compose logs controller db-writer | grep -q "PLACEHOLDER ONLY"
+
+      - name: Compose logs
+        if: always()
+        run: docker compose logs --no-color
+
+      - name: Tear down
+        if: always()
+        run: docker compose --profile test down -v

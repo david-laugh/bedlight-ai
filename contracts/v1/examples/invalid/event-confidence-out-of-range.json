@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0.0",
+  "event_id": "0b7e4f2a-1c3d-4e5f-8a9b-0c1d2e3f4a15",
+  "trace_id": "3f6c1a2e-8b4d-4c1e-9a7f-2d5e6b7c8a90",
+  "source": "mock",
+  "device_id": "mock-xiao-01",
+  "event_type": "LYING_DETECTED",
+  "sequence": 5,
+  "model": { "name": "mock-vision", "version": "mock", "task": "vision-classification", "runtime": "mock" },
+  "data": { "label": "lying", "confidence": 1.7, "threshold": 0.8 },
+  "timing": {}
+}

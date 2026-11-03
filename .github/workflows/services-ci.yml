@@ -1,0 +1,123 @@
+name: services-ci
+
+# 서비스 테스트. 대상 코드/테스트가 존재할 때만 해당 job 이 실행된다.
+#  - contracts   : 항상 실행 (valid 예시는 통과, invalid 예시는 거부되어야 함)
+#  - python-unit : services/*/tests/test_*.py, tests/mock-device/tests/test_*.py 가 있을 때
+#  - frontend    : services/simulator-web/package.json 이 있을 때
+#  - integration : tests/integration/test_*.py 가 있을 때
+# 대상이 없으면 job 은 "skipped" 로 표시되며, detect job Summary 에 미실행 사유가 남는다.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    name: Detect testable targets
+    runs-on: ubuntu-24.04
+    outputs:
+      python_targets: ${{ steps.d.outputs.python_targets }}
+      frontend: ${{ steps.d.outputs.frontend }}
+      integration: ${{ steps.d.outputs.integration }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: d
+        run: |
+          targets=()
+          for dir in services/controller services/db-writer tests/mock-device; do
+            if compgen -G "$dir/tests/test_*.py" > /dev/null; then targets+=("\"$dir\""); fi
+          done
+          python_targets="[$(IFS=,; echo "${targets[*]}")]"
+          frontend=false;    [[ -f services/simulator-web/package.json ]] && frontend=true
+          integration=false; compgen -G "tests/integration/test_*.py" > /dev/null && integration=true
+          {
+            echo "python_targets=$python_targets"
+            echo "frontend=$frontend"
+            echo "integration=$integration"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "### Test targets"
+            echo "| target | status |"
+            echo "|---|---|"
+            echo "| python unit | $python_targets $( [[ $python_targets == '[]' ]] && echo '(none → skipped)') |"
+            echo "| frontend | $( $frontend && echo run || echo 'no package.json → skipped') |"
+            echo "| integration | $( $integration && echo run || echo 'no tests → skipped') |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  contracts:
+    name: Event contract checks
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r scripts/requirements-ci.txt
+      - name: Validate schemas + valid/invalid examples
+        run: python scripts/validate_contracts.py
+
+  python-unit:
+    name: Python unit (${{ matrix.target }})
+    needs: detect
+    if: needs.detect.outputs.python_targets != '[]'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.detect.outputs.python_targets) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install pytest -r scripts/requirements-ci.txt
+          if [[ -f "${{ matrix.target }}/requirements.txt" ]]; then pip install -r "${{ matrix.target }}/requirements.txt"; fi
+          if [[ -f "${{ matrix.target }}/requirements-dev.txt" ]]; then pip install -r "${{ matrix.target }}/requirements-dev.txt"; fi
+      - name: pytest
+        run: pytest -q "${{ matrix.target }}/tests"
+
+  frontend:
+    name: Simulator web build & test
+    needs: detect
+    if: needs.detect.outputs.frontend == 'true'
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: services/simulator-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: npm run build
+      - run: npm test --if-present
+
+  integration:
+    name: Integration (compose profile test)
+    needs: [detect, contracts]
+    if: needs.detect.outputs.integration == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          pip install pytest -r scripts/requirements-ci.txt
+          if [[ -f tests/integration/requirements.txt ]]; then pip install -r tests/integration/requirements.txt; fi
+      - name: Start stack
+        run: docker compose --profile test up -d --build --wait --wait-timeout 120 mqtt-broker controller db-writer simulator-web
+      - name: pytest integration
+        run: pytest -q tests/integration
+      - if: always()
+        run: docker compose logs --no-color
+      - if: always()
+        run: docker compose --profile test down -v

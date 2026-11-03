@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0.0",
+  "event_id": "0b7e4f2a-1c3d-4e5f-8a9b-0c1d2e3f4a01",
+  "trace_id": "3f6c1a2e-8b4d-4c1e-9a7f-2d5e6b7c8a90",
+  "source": "device",
+  "device_id": "xiao-01",
+  "event_type": "LYING_DETECTED",
+  "sequence": 101,
+  "model": { "name": "bedlight-lying-vision", "version": "ei-v1", "task": "vision-classification", "runtime": "edge-impulse" },
+  "data": { "label": "lying", "confidence": 0.91, "threshold": 0.8, "consecutive_frames": 3 },
+  "timing": { "device_uptime_ms": 532100, "capture_ms": 42.0, "dsp_ms": 8.5, "inference_ms": 120.3 }
+}

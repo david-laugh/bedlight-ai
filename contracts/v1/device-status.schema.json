@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bedlight.local/contracts/v1/device-status.schema.json",
+  "title": "BedLight AI Device Status v1",
+  "description": "Retained message on bedlight/v1/devices/{device_id}/status. 'offline' is also registered as the MQTT Last Will.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "source", "device_id", "state"],
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^1\\.[0-9]+\\.[0-9]+$" },
+    "source": { "enum": ["device", "mock"] },
+    "device_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,63}$" },
+    "state": { "enum": ["online", "offline"] },
+    "firmware_version": { "type": "string", "maxLength": 32 },
+    "uptime_ms": { "type": "integer", "minimum": 0 },
+    "free_heap_bytes": { "type": "integer", "minimum": 0 },
+    "free_psram_bytes": { "type": "integer", "minimum": 0 },
+    "wifi_rssi_dbm": { "type": "integer", "minimum": -127, "maximum": 0 },
+    "models": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "version", "task"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "version": { "type": "string", "minLength": 1, "maxLength": 32 },
+          "task": { "enum": ["vision-classification", "keyword-spotting"] }
+        }
+      }
+    },
+    "reported_at": { "type": "string", "format": "date-time" }
+  }
+}

@@ -1,0 +1,23 @@
+# BedLight AI — Mosquitto ACL 템플릿 (향후 사용)
+# 원칙: 각 계정은 자신의 역할에 필요한 topic 만 read/write 한다.
+
+# 디바이스: MQTT username = device_id 로 발급 (%u 치환)
+pattern write bedlight/v1/devices/%u/events
+pattern write bedlight/v1/devices/%u/status
+
+# controller: 디바이스 이벤트/상태 구독, 시뮬레이터 결과 발행
+user controller
+topic read  bedlight/v1/devices/+/events
+topic read  bedlight/v1/devices/+/status
+topic write bedlight/v1/simulator/+/events
+
+# db-writer: 저장 대상 topic 구독만 허용
+user db-writer
+topic read bedlight/v1/devices/+/events
+topic read bedlight/v1/devices/+/status
+topic read bedlight/v1/simulator/+/events
+
+# mock-device: mock 전용 device_id prefix 만 발행
+user mock-device
+topic write bedlight/v1/devices/+/events
+topic write bedlight/v1/devices/+/status

@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0.0",
+  "source": "device",
+  "device_id": "xiao-01",
+  "state": "online",
+  "firmware_version": "0.1.0",
+  "uptime_ms": 532000,
+  "free_heap_bytes": 180000,
+  "free_psram_bytes": 7000000,
+  "wifi_rssi_dbm": -58,
+  "models": [
+    { "name": "bedlight-lying-vision", "version": "ei-v1", "task": "vision-classification" },
+    { "name": "bedlight-kws-off", "version": "ei-v1", "task": "keyword-spotting" }
+  ]
+}

@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bedlight.local/contracts/v1/event-envelope.schema.json",
+  "title": "BedLight AI Event Envelope v1",
+  "description": "Common envelope for every BedLight event on MQTT topics bedlight/v1/devices/{device_id}/events and bedlight/v1/simulator/{room_id}/events, and on the controller<->simulator WebSocket.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "trace_id",
+    "source",
+    "device_id",
+    "event_type",
+    "sequence",
+    "model",
+    "data",
+    "timing"
+  ],
+  "properties": {
+    "schema_version": {
+      "description": "Semantic version of this contract. Major must be 1 for contracts/v1.",
+      "type": "string",
+      "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+    },
+    "event_id": {
+      "description": "Unique id of this event (UUID v4, lowercase). Used for de-duplication (DB UNIQUE).",
+      "$ref": "#/$defs/uuid"
+    },
+    "trace_id": {
+      "description": "Correlates all events of one command flow (lying -> listening -> keyword -> request -> applied).",
+      "$ref": "#/$defs/uuid"
+    },
+    "source": {
+      "description": "Origin of the event. 'device' = real XIAO ESP32S3, 'mock' = tests/mock-device, 'simulator' = simulator-web, 'controller' = controller service.",
+      "enum": ["device", "mock", "simulator", "controller"]
+    },
+    "device_id": {
+      "description": "Device the flow belongs to. Simulator/controller events copy the originating device_id.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+    },
+    "event_type": {
+      "enum": [
+        "LYING_DETECTED",
+        "LYING_LOST",
+        "LISTENING_STARTED",
+        "VOICE_KEYWORD_DETECTED",
+        "LIGHT_OFF_REQUESTED",
+        "LIGHT_OFF_APPLIED",
+        "SYSTEM_ERROR"
+      ]
+    },
+    "sequence": {
+      "description": "Per-emitter monotonically increasing counter (resets on device reboot). Used to detect loss/reordering.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "model": {
+      "description": "AI model that produced the event. Required (non-null) for inference events, null otherwise.",
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/model" }]
+    },
+    "data": {
+      "description": "Event-type specific payload; see allOf below.",
+      "type": "object"
+    },
+    "timing": { "$ref": "#/$defs/timing" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "event_type": { "const": "LYING_DETECTED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "source": { "enum": ["device", "mock"] },
+          "model": { "$ref": "#/$defs/model" },
+          "data": { "$ref": "#/$defs/data_lying_detected" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "LYING_LOST" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "source": { "enum": ["device", "mock"] },
+          "model": { "$ref": "#/$defs/model" },
+          "data": { "$ref": "#/$defs/data_lying_lost" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "LISTENING_STARTED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "source": { "enum": ["device", "mock"] },
+          "model": { "type": "null" },
+          "data": { "$ref": "#/$defs/data_listening_started" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "VOICE_KEYWORD_DETECTED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "source": { "enum": ["device", "mock"] },
+          "model": { "$ref": "#/$defs/model" },
+          "data": { "$ref": "#/$defs/data_voice_keyword_detected" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "LIGHT_OFF_REQUESTED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "source": { "enum": ["device", "mock"] },
+          "model": { "type": "null" },
+          "data": { "$ref": "#/$defs/data_light_off_requested" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "LIGHT_OFF_APPLIED" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "source": { "const": "simulator" },
+          "model": { "type": "null" },
+          "data": { "$ref": "#/$defs/data_light_off_applied" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "event_type": { "const": "SYSTEM_ERROR" } }, "required": ["event_type"] },
+      "then": {
+        "properties": {
+          "model": { "type": "null" },
+          "data": { "$ref": "#/$defs/data_system_error" }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "duration_ms": { "type": "number", "minimum": 0 },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "task", "runtime"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "version": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "task": { "enum": ["vision-classification", "keyword-spotting"] },
+        "runtime": { "enum": ["edge-impulse", "mock"] }
+      }
+    },
+    "timing": {
+      "description": "Per-stage timestamps/durations for bottleneck analysis. Each component only ADDS its own fields.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "device_uptime_ms": { "type": "integer", "minimum": 0, "description": "millis() on ESP32 when the event was created." },
+        "emitted_at": { "$ref": "#/$defs/timestamp", "description": "Wall clock when emitted (device only if SNTP synced)." },
+        "capture_ms": { "$ref": "#/$defs/duration_ms", "description": "Camera frame capture + preprocessing." },
+        "dsp_ms": { "$ref": "#/$defs/duration_ms", "description": "Edge Impulse DSP/feature time." },
+        "inference_ms": { "$ref": "#/$defs/duration_ms", "description": "Edge Impulse classifier time." },
+        "controller_received_at": { "$ref": "#/$defs/timestamp" },
+        "controller_forwarded_at": { "$ref": "#/$defs/timestamp" },
+        "simulator_received_at": { "$ref": "#/$defs/timestamp" },
+        "simulator_applied_at": { "$ref": "#/$defs/timestamp" },
+        "render_ms": { "$ref": "#/$defs/duration_ms", "description": "State change -> frame painted in simulator." }
+      }
+    },
+    "data_lying_detected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "confidence", "threshold"],
+      "properties": {
+        "label": { "const": "lying" },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "threshold": { "$ref": "#/$defs/confidence" },
+        "consecutive_frames": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "data_lying_lost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "confidence"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "lying_duration_ms": { "$ref": "#/$defs/duration_ms" }
+      }
+    },
+    "data_listening_started": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason", "window_ms"],
+      "properties": {
+        "reason": { "enum": ["lying_detected", "manual"] },
+        "window_ms": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "data_voice_keyword_detected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keyword", "confidence", "threshold"],
+      "properties": {
+        "keyword": { "const": "off" },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "threshold": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "data_light_off_requested": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["room_id", "light_id", "cause_event_ids"],
+      "properties": {
+        "room_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,63}$" },
+        "light_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,63}$" },
+        "cause_event_ids": {
+          "description": "event_ids of the LYING_DETECTED and VOICE_KEYWORD_DETECTED that triggered this request.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/uuid" },
+          "minItems": 1,
+          "maxItems": 8
+        }
+      }
+    },
+    "data_light_off_applied": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["room_id", "light_id", "request_event_id", "result"],
+      "properties": {
+        "room_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,63}$" },
+        "light_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,63}$" },
+        "request_event_id": { "$ref": "#/$defs/uuid" },
+        "result": { "enum": ["applied", "already_off", "rejected"] },
+        "reason": { "type": "string", "maxLength": 256 }
+      }
+    },
+    "data_system_error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component", "code", "message", "recoverable"],
+      "properties": {
+        "component": { "enum": ["camera", "microphone", "vision-model", "voice-model", "wifi", "mqtt", "controller", "db-writer", "simulator", "mock-device"] },
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,63}$" },
+        "message": { "type": "string", "maxLength": 512 },
+        "recoverable": { "type": "boolean" }
+      }
+    }
+  }
+}

@@ -1,0 +1,112 @@
+# BedLight AI — Docker Compose
+#
+# 현재 단계: Repository scaffold.
+#   - mqtt-broker   : 실제 동작 (Eclipse Mosquitto, 개발용 무인증 설정, localhost 바인딩)
+#   - controller    : PLACEHOLDER (기능 없음, 대기 프로세스만 실행)
+#   - db-writer     : PLACEHOLDER (기능 없음, 대기 프로세스만 실행, DB 접속 안 함)
+#   - simulator-web : PLACEHOLDER (정적 안내 페이지만 제공)
+#   - mock-device   : PLACEHOLDER (profile "test", 안내 메시지 출력 후 종료)
+#
+# 사용:
+#   docker compose up -d --build                 # 기본 서비스
+#   docker compose --profile test up --build     # mock-device 포함
+#
+# 보안: 모든 host 포트는 127.0.0.1 에만 바인딩한다. 무인증 MQTT 포트를
+#       외부(인터넷/공용망)에 노출하지 말 것. docs/security.md 참고.
+
+name: bedlight-ai
+
+x-mqtt-env: &mqtt-env
+  MQTT_HOST: ${MQTT_HOST:-mqtt-broker}
+  MQTT_PORT: ${MQTT_PORT:-1883}
+  MQTT_TOPIC_PREFIX: ${MQTT_TOPIC_PREFIX:-bedlight/v1}
+  CONTRACT_VERSION: "1"
+
+services:
+  mqtt-broker:
+    image: eclipse-mosquitto:2.0.20
+    container_name: bedlight-mqtt-broker
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MQTT_HOST_PORT:-1883}:1883"
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-h", "127.0.0.1", "-p", "1883", "-t", "$$SYS/broker/version", "-C", "1", "-W", "3"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks: [bedlight-net]
+
+  controller:
+    build:
+      context: ./services/controller
+    image: bedlight/controller:dev
+    container_name: bedlight-controller
+    restart: unless-stopped
+    environment:
+      <<: *mqtt-env
+      SERVICE_NAME: controller
+      # 향후 FastAPI(HTTP/WebSocket) 포트. placeholder 는 포트를 열지 않는다.
+      CONTROLLER_PORT: ${CONTROLLER_PORT:-8000}
+    # 향후 구현 시 활성화:
+    # ports:
+    #   - "127.0.0.1:${CONTROLLER_PORT:-8000}:8000"
+    depends_on:
+      mqtt-broker:
+        condition: service_healthy
+    networks: [bedlight-net]
+
+  db-writer:
+    build:
+      context: ./services/db-writer
+    image: bedlight/db-writer:dev
+    container_name: bedlight-db-writer
+    restart: unless-stopped
+    # Supabase secret key 는 db-writer 에만 주입한다 (controller/simulator 에는 주입 금지).
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *mqtt-env
+      SERVICE_NAME: db-writer
+    depends_on:
+      mqtt-broker:
+        condition: service_healthy
+    networks: [bedlight-net]
+
+  simulator-web:
+    build:
+      context: ./services/simulator-web
+    image: bedlight/simulator-web:dev
+    container_name: bedlight-simulator-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${SIMULATOR_HOST_PORT:-8080}:80"
+    networks: [bedlight-net]
+
+  mock-device:
+    profiles: ["test"]
+    build:
+      context: ./tests/mock-device
+    image: bedlight/mock-device:dev
+    container_name: bedlight-mock-device
+    restart: "no"
+    environment:
+      <<: *mqtt-env
+      SERVICE_NAME: mock-device
+      MOCK_DEVICE_ID: ${MOCK_DEVICE_ID:-mock-xiao-01}
+      MOCK_EVENT_SOURCE: mock
+    depends_on:
+      mqtt-broker:
+        condition: service_healthy
+    networks: [bedlight-net]
+
+volumes:
+  mosquitto-data:
+
+networks:
+  bedlight-net:
+    name: bedlight-net

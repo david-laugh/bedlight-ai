@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0.0",
+  "event_id": "0b7e4f2a-1c3d-4e5f-8a9b-0c1d2e3f4a11",
+  "source": "device",
+  "device_id": "xiao-01",
+  "event_type": "LISTENING_STARTED",
+  "sequence": 1,
+  "model": null,
+  "data": { "reason": "manual", "window_ms": 5000 },
+  "timing": {}
+}

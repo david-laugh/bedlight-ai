@@ -1,0 +1,33 @@
+# BedLight AI — Mosquitto 인증 설정 템플릿 (향후 사용)
+#
+# 사용 절차 (docs/security.md 참고):
+#   1. 이 파일을 mosquitto.auth.conf 로 복사
+#   2. 비밀번호 파일 생성 (Repository 에 커밋 금지, .gitignore 처리됨):
+#        docker run --rm -it -v "$PWD/infra/mosquitto:/work" eclipse-mosquitto:2.0.20 \
+#          mosquitto_passwd -c /work/passwd xiao-01
+#   3. acl.example 을 acl 로 복사 후 계정/디바이스에 맞게 수정
+#   4. compose 에서 mosquitto.conf 대신 이 파일과 passwd, acl 을 마운트
+#   5. 인터넷 노출이 필요하면 TLS(8883) listener 를 추가하고 1883 은 LAN/localhost 로 제한
+
+persistence true
+persistence_location /mosquitto/data/
+log_dest stdout
+log_type error
+log_type warning
+log_type notice
+connection_messages true
+
+listener 1883 0.0.0.0
+protocol mqtt
+allow_anonymous false
+password_file /mosquitto/config/passwd
+acl_file /mosquitto/config/acl
+
+message_size_limit 65536
+
+# TLS listener 예시 (인증서는 Repository 에 포함하지 않는다)
+# listener 8883 0.0.0.0
+# cafile   /mosquitto/certs/ca.crt
+# certfile /mosquitto/certs/server.crt
+# keyfile  /mosquitto/certs/server.key
+# require_certificate false

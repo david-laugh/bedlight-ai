@@ -1,0 +1,43 @@
+# Secrets
+.env
+.env.*
+!.env.example
+firmware/**/secrets.h
+infra/mosquitto/passwd
+infra/mosquitto/acl
+infra/mosquitto/mosquitto.auth.conf
+infra/mosquitto/certs/
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Firmware build
+firmware/**/build/
+*.elf
+*.map
+
+# Model datasets (개인 영상/음성 포함 가능)
+models/**/dataset/
+models/**/raw/
+
+# Performance results
+tests/performance/results/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

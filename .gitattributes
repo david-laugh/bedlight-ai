@@ -1,0 +1,7 @@
+# Docker/CI 는 Linux 에서 실행되므로 줄바꿈을 LF 로 고정 (Windows 개발 환경 대비)
+* text=auto eol=lf
+*.zip binary
+*.bin binary
+*.png binary
+*.jpg binary
+*.wav binary

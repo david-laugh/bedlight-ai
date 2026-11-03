@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0.0",
+  "event_id": "0b7e4f2a-1c3d-4e5f-8a9b-0c1d2e3f4a07",
+  "trace_id": "5b6c7d8e-9f0a-4b1c-8d2e-3f4a5b6c7d8e",
+  "source": "device",
+  "device_id": "xiao-01",
+  "event_type": "SYSTEM_ERROR",
+  "sequence": 104,
+  "model": null,
+  "data": { "component": "camera", "code": "CAMERA_INIT_FAILED", "message": "esp_camera_init returned 0x105", "recoverable": false },
+  "timing": { "device_uptime_ms": 900 }
+}

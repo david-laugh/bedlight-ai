@@ -1,0 +1,102 @@
+name: firmware-ci
+
+# XIAO ESP32S3 Sense 펌웨어 컴파일 (Arduino CLI, ESP32 Core 2.0.x 고정).
+#
+# 정책: 펌웨어 스케치(.ino)가 없으면 compile job 은 실행되지 않고 "skipped" 로 표시된다.
+#       빌드 성공으로 위장하지 않는다. detect job 은 Job Summary 에 미컴파일 사실을 기록한다.
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "firmware/**"
+      - "models/**"
+      - ".github/workflows/firmware-ci.yml"
+  pull_request:
+    paths:
+      - "firmware/**"
+      - "models/**"
+      - ".github/workflows/firmware-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    name: Detect firmware sketch
+    runs-on: ubuntu-24.04
+    outputs:
+      has_sketch: ${{ steps.detect.outputs.has_sketch }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: detect
+        run: |
+          set -a; source firmware/xiao-esp32s3-sense/toolchain.env; set +a
+          if compgen -G "$SKETCH_DIR/*.ino" > /dev/null; then
+            echo "has_sketch=true" >> "$GITHUB_OUTPUT"
+            echo "Firmware sketch found in \`$SKETCH_DIR\` → compile job will run." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "has_sketch=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Firmware NOT compiled"
+              echo "No \`.ino\` sketch in \`$SKETCH_DIR\`. The compile job is **skipped** (not passed)."
+              echo "Pinned toolchain: ESP32 Core \`$ESP32_CORE_VERSION\`, FQBN \`$FQBN\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  compile:
+    name: Compile (arduino-cli, esp32 core 2.0.x)
+    needs: detect
+    if: needs.detect.outputs.has_sketch == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load pinned toolchain
+        run: grep -E '^[A-Z_]+=' firmware/xiao-esp32s3-sense/toolchain.env >> "$GITHUB_ENV"
+
+      - name: Guard core version is 2.0.x
+        run: |
+          [[ "$ESP32_CORE_VERSION" =~ ^2\.0\.[0-9]+$ ]] || { echo "ESP32_CORE_VERSION must be 2.0.x"; exit 1; }
+
+      - uses: arduino/setup-arduino-cli@v2
+
+      - name: Cache Arduino data
+        uses: actions/cache@v4
+        with:
+          path: ~/.arduino15
+          key: arduino15-esp32-${{ env.ESP32_CORE_VERSION }}
+
+      - name: Install ESP32 core
+        run: |
+          arduino-cli config init --overwrite
+          arduino-cli config add board_manager.additional_urls "$ESP32_BOARD_MANAGER_URL"
+          arduino-cli config set library.enable_unsafe_install true
+          arduino-cli core update-index
+          arduino-cli core install "esp32:esp32@${ESP32_CORE_VERSION}"
+          arduino-cli core list
+
+      - name: Install Edge Impulse libraries
+        run: |
+          shopt -s nullglob
+          zips=("$EI_LIBRARY_DIR"/*.zip)
+          if [[ ${#zips[@]} -eq 0 ]]; then
+            echo "::warning::No Edge Impulse library zip in $EI_LIBRARY_DIR. Compile will fail if the sketch includes it."
+          fi
+          for z in "${zips[@]}"; do
+            echo "Installing $z"
+            arduino-cli lib install --zip-path "$z"
+          done
+          arduino-cli lib list
+
+      - name: Compile
+        run: |
+          mkdir -p build
+          arduino-cli compile --fqbn "$FQBN" --warnings default --output-dir build "$SKETCH_DIR"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bedlight-firmware-${{ github.sha }}
+          path: build/*.bin
+          if-no-files-found: error

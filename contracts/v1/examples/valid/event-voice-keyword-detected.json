@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0.0",
+  "event_id": "0b7e4f2a-1c3d-4e5f-8a9b-0c1d2e3f4a03",
+  "trace_id": "3f6c1a2e-8b4d-4c1e-9a7f-2d5e6b7c8a90",
+  "source": "device",
+  "device_id": "xiao-01",
+  "event_type": "VOICE_KEYWORD_DETECTED",
+  "sequence": 103,
+  "model": { "name": "bedlight-kws-off", "version": "ei-v1", "task": "keyword-spotting", "runtime": "edge-impulse" },
+  "data": { "keyword": "off", "confidence": 0.87, "threshold": 0.75 },
+  "timing": { "device_uptime_ms": 534020, "dsp_ms": 30.1, "inference_ms": 15.2 }
+}

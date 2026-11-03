@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BedLight AI Simulator (placeholder)</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 48px auto; padding: 0 16px; line-height: 1.6; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; background: #b45309; color: #fff; font-size: 12px; font-weight: 600; }
+    code { font-size: 0.95em; }
+  </style>
+</head>
+<body>
+  <span class="badge">PLACEHOLDER</span>
+  <h1>BedLight AI — 가상 침실 시뮬레이터</h1>
+  <p>이 페이지는 컨테이너 구동 확인용 정적 안내 페이지입니다.
+     <strong>시뮬레이터 기능(침실·사람·조명 렌더링, WebSocket 연결, 조명 제어)은 아직 구현되지 않았습니다.</strong></p>
+  <h2>예정 기능</h2>
+  <ul>
+    <li>React + Vite 기반 침실 / 사람 / 조명 시뮬레이션</li>
+    <li>Controller WebSocket <code>/ws/simulator/{room_id}</code> 연결</li>
+    <li><code>LIGHT_OFF_REQUESTED</code> 수신 → 조명 끄기 → <code>LIGHT_OFF_APPLIED</code> 반환</li>
+    <li>화면 반영 시간(<code>render_ms</code>) 측정</li>
+  </ul>
+  <p>계약: <code>contracts/v1/event-envelope.schema.json</code></p>
+</body>
+</html>
