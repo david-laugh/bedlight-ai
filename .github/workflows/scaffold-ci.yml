@@ -10,7 +10,7 @@ name: scaffold-ci
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, release]
   pull_request:
   workflow_dispatch:
 
@@ -83,6 +83,33 @@ jobs:
             test "$state" = "running"
           done
           docker compose logs controller db-writer | grep -q "PLACEHOLDER ONLY"
+
+      - name: Voice service - upload synthetic WAV and verify persistence
+        env:
+          VOICE_DATASET_DIR: ${{ runner.temp }}/voice-data
+        run: |
+          mkdir -p "$VOICE_DATASET_DIR"
+          VOICE_UID=$(id -u); VOICE_GID=$(id -g); export VOICE_UID VOICE_GID
+          docker compose up -d --wait --wait-timeout 90 voice-service
+          curl -fsS http://127.0.0.1:8001/health
+          # SYNTHETIC test tone (pipeline check only, never training data)
+          python3 -c "import sys,math; sys.path.insert(0,'services/voice-service'); from app.wav_utils import write_pcm16_wav; write_pcm16_wav('/tmp/synthetic.wav',[int(6000*math.sin(2*math.pi*440*i/16000)) for i in range(32000)],16000)"
+          code=$(curl -s -o /tmp/resp.json -w '%{http_code}' -F audio=@/tmp/synthetic.wav -F label=off \
+            -F device_id=ci-runner -F capture_id=ci-${{ github.run_id }}-0001 -F sample_rate=16000 \
+            http://127.0.0.1:8001/api/v1/recordings)
+          cat /tmp/resp.json; echo
+          test "$code" = "201"
+          rel=$(python3 -c "import json; print(json.load(open('/tmp/resp.json'))['relative_path'])")
+          test -f "$VOICE_DATASET_DIR/$rel"
+          # persistence across container restart
+          docker compose restart voice-service
+          docker compose up -d --wait --wait-timeout 90 voice-service
+          curl -fsS http://127.0.0.1:8001/api/v1/recordings/stats | tee /tmp/stats.json
+          python3 -c "import json; assert json.load(open('/tmp/stats.json'))['labels']['off']['files'] == 1"
+          # bad file is rejected
+          code=$(curl -s -o /dev/null -w '%{http_code}' -F audio=@README.md -F label=off -F device_id=ci-runner \
+            -F capture_id=ci-${{ github.run_id }}-0002 -F sample_rate=16000 http://127.0.0.1:8001/api/v1/recordings)
+          test "$code" = "422"
 
       - name: Compose logs
         if: always()

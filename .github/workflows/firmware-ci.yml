@@ -1,21 +1,27 @@
 name: firmware-ci
 
-# XIAO ESP32S3 Sense 펌웨어 컴파일 (Arduino CLI, ESP32 Core 2.0.x 고정).
+# XIAO ESP32S3 Sense 펌웨어 (Arduino CLI, ESP32 Core 2.0.x 고정).
+#  - host-tests : wav_header.h 를 g++ 로 단위 테스트하고, 생성한 합성 WAV 를 scripts/check_wav.py 로 교차 검증
+#  - compile    : bedlight.ino 컴파일 (config.h 는 CI 에서 config.example.h 로부터 생성 — 실제 비밀값 없음)
 #
-# 정책: 펌웨어 스케치(.ino)가 없으면 compile job 은 실행되지 않고 "skipped" 로 표시된다.
-#       빌드 성공으로 위장하지 않는다. detect job 은 Job Summary 에 미컴파일 사실을 기록한다.
+# 정책: 스케치(.ino)가 없으면 compile job 은 "skipped" 로 표시되며 성공으로 위장하지 않는다.
+#       실제 하드웨어 녹음/업로드는 CI 로 검증할 수 없다 (docs/test-plan.md 수동 테스트 H1~H6).
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, release]
     paths:
       - "firmware/**"
       - "models/**"
+      - "services/voice-service/app/wav_utils.py"
+      - "scripts/check_wav.py"
       - ".github/workflows/firmware-ci.yml"
   pull_request:
     paths:
       - "firmware/**"
       - "models/**"
+      - "services/voice-service/app/wav_utils.py"
+      - "scripts/check_wav.py"
       - ".github/workflows/firmware-ci.yml"
   workflow_dispatch:
 
@@ -41,9 +47,25 @@ jobs:
             {
               echo "### Firmware NOT compiled"
               echo "No \`.ino\` sketch in \`$SKETCH_DIR\`. The compile job is **skipped** (not passed)."
-              echo "Pinned toolchain: ESP32 Core \`$ESP32_CORE_VERSION\`, FQBN \`$FQBN\`."
             } >> "$GITHUB_STEP_SUMMARY"
           fi
+
+  host-tests:
+    name: WAV header host tests (g++)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build and run test_wav_header
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror \
+            -I firmware/xiao-esp32s3-sense/bedlight \
+            firmware/xiao-esp32s3-sense/tests/test_wav_header.cpp -o /tmp/test_wav_header
+          /tmp/test_wav_header /tmp/firmware_header_synthetic.wav
+      - name: Cross-check firmware WAV with the server-side validator
+        run: python scripts/check_wav.py --strict /tmp/firmware_header_synthetic.wav
 
   compile:
     name: Compile (arduino-cli, esp32 core 2.0.x)
@@ -59,6 +81,12 @@ jobs:
       - name: Guard core version is 2.0.x
         run: |
           [[ "$ESP32_CORE_VERSION" =~ ^2\.0\.[0-9]+$ ]] || { echo "ESP32_CORE_VERSION must be 2.0.x"; exit 1; }
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Python deps for esptool / gen_esp32part (Core 2.0.x calls python3)
+        run: pip install pyserial
 
       - uses: arduino/setup-arduino-cli@v2
 
@@ -77,26 +105,31 @@ jobs:
           arduino-cli core install "esp32:esp32@${ESP32_CORE_VERSION}"
           arduino-cli core list
 
-      - name: Install Edge Impulse libraries
+      - name: Install Edge Impulse libraries (if present)
         run: |
           shopt -s nullglob
           zips=("$EI_LIBRARY_DIR"/*.zip)
           if [[ ${#zips[@]} -eq 0 ]]; then
-            echo "::warning::No Edge Impulse library zip in $EI_LIBRARY_DIR. Compile will fail if the sketch includes it."
+            echo "No Edge Impulse library zip in $EI_LIBRARY_DIR (Vision model not yet exported)."
           fi
           for z in "${zips[@]}"; do
             echo "Installing $z"
             arduino-cli lib install --zip-path "$z"
           done
-          arduino-cli lib list
+
+      - name: Create CI config.h from template (no real credentials)
+        run: cp "$SKETCH_DIR/config.example.h" "$SKETCH_DIR/config.h"
 
       - name: Compile
         run: |
           mkdir -p build
-          arduino-cli compile --fqbn "$FQBN" --warnings default --output-dir build "$SKETCH_DIR"
+          arduino-cli compile --fqbn "$FQBN" --warnings all --output-dir build "$SKETCH_DIR" 2>&1 | tee build/compile.log
+          grep -E "Sketch uses|Global variables" build/compile.log >> "$GITHUB_STEP_SUMMARY" || true
 
       - uses: actions/upload-artifact@v4
         with:
           name: bedlight-firmware-${{ github.sha }}
-          path: build/*.bin
+          path: |
+            build/*.bin
+            build/compile.log
           if-no-files-found: error

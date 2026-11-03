@@ -16,6 +16,20 @@
 | 실기기 | 누움 감지/“off” 인식 정확도, E2E | 수동 체크리스트 | `docs/` (예정) | 미작성 |
 | 성능 | 구간 지연, 부하, 자원 | 아래 및 performance-plan | `tests/performance/` | 미작성 |
 
+## 1-A. 음성 데이터 수집 (이번 단계)
+
+| 계층 | 대상 | 위치 | 상태 |
+|---|---|---|---|
+| 단위 | WAV 파싱/형식 검증/품질 분석 | `services/voice-service/tests/test_wav_utils.py` | **동작** |
+| 단위 | 업로드 API: 정상 저장, 잘못된 라벨/ID/샘플레이트, 스테레오·8 kHz·8-bit·float, 빈·손상·잘린 파일, 길이·크기 제한, 전부 0, 경로 조작, 중복 capture_id, 파일명 충돌, 토큰, 재시작 후 유지, 응답 스키마 | `services/voice-service/tests/test_api.py` | **동작** |
+| 단위 | `check_wav.py`, `prepare_voice_dataset.py` (구간 선택, split 누수 방지, 중복 제거, override, 재실행) | `scripts/tests/` | **동작** |
+| 호스트 | 펌웨어 `wav_header.h` (g++) + 생성 WAV 를 서버 검증기로 교차 확인 | `firmware/xiao-esp32s3-sense/tests/` | **동작** |
+| 컴파일 | `bedlight.ino` @ Core 2.0.17 | `firmware-ci.yml` | **동작** |
+| 컨테이너 | voice-service 기동, 합성 WAV 업로드 → bind mount 파일 확인 → 재시작 후 유지 → 잘못된 파일 422 | `scaffold-ci.yml` | **동작** |
+| 수동 | 실제 보드 녹음·업로드·청취 (H1~H7) | [voice-dataset.md §9](voice-dataset.md) | **미검증** |
+
+테스트 오디오는 모두 실행 시 생성하는 **합성 신호**이며 학습 데이터로 사용하지 않는다.
+
 ## 2. 기능 시나리오
 
 | ID | 시나리오 | 기대 결과 |

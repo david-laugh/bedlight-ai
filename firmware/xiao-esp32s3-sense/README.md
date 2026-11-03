@@ -1,45 +1,52 @@
 # firmware/xiao-esp32s3-sense
 
-> **상태: 미구현.** 펌웨어 소스(`.ino`)가 없다. `firmware-ci.yml` 은 스케치가 없으면 compile job 을 **skipped** 로 남기며 성공으로 위장하지 않는다.
+| 모드 | 상태 |
+|---|---|
+| `DATASET_RECORDING` — PDM 마이크 녹음 → WAV → Voice Service 업로드 | **구현. Core 2.0.17 컴파일 확인. 실제 보드 동작 미검증** |
+| Vision (누운 자세, Edge Impulse 온디바이스) | 미구현 |
+| MQTT 이벤트 발행 | 미구현 |
+
+ESP32 는 Voice 모델을 실행하지 않는다 (아키텍처 v2). 사용 방법: [docs/voice-dataset.md](../../docs/voice-dataset.md).
+
+## 파일
+
+```
+toolchain.env               CI 가 읽는 버전 고정값 (Core 2.0.17, FQBN)
+bedlight/bedlight.ino       메인 스케치
+bedlight/wav_header.h       WAV 헤더 생성 + DC 제거/게인 (Arduino 비의존, 호스트 테스트)
+bedlight/config.example.h   설정 템플릿 → config.h 로 복사 (config.h 는 .gitignore)
+tests/test_wav_header.cpp   g++ 호스트 단위 테스트 (firmware-ci)
+```
 
 ## 대상 하드웨어 / 툴체인
 
 | 항목 | 값 |
 |---|---|
-| 보드 | Seeed Studio XIAO ESP32S3 Sense (ESP32-S3, 8MB OPI PSRAM, OV2640/OV3660 카메라, PDM 마이크) |
-| Core | ESP32 Arduino Core **2.0.x** (`toolchain.env` 의 `ESP32_CORE_VERSION=2.0.17`) |
-| FQBN | `esp32:esp32:XIAO_ESP32S3:PSRAM=opi` (첫 빌드 시 `arduino-cli board details` 로 옵션명 확인) |
-| AI 런타임 | Edge Impulse Arduino 라이브러리 (Vision 1 + KWS 1) |
+| 보드 | Seeed Studio XIAO ESP32S3 Sense (8 MB OPI PSRAM, 8 MB Flash) |
+| 마이크 | 내장 PDM: CLK GPIO42, DATA GPIO41 |
+| Core | ESP32 Arduino Core **2.0.x** (2.0.17 고정). `ESP_I2S.h`(3.x) 사용 안 함 |
+| FQBN | `esp32:esp32:XIAO_ESP32S3:PSRAM=opi,CDCOnBoot=default` (= IDE: PSRAM OPI, USB CDC On Boot Enabled) |
 
-## 예정 구조
+## 녹음 구현 요약
 
-```
-firmware/xiao-esp32s3-sense/
-  toolchain.env                 # CI 가 읽는 버전 고정값
-  bedlight/bedlight.ino         # 스케치 (SKETCH_DIR) — 이 파일이 생기면 CI compile 활성화
-  bedlight/config.h             # 핀/임계값/topic (비밀값 금지)
-  bedlight/secrets.h.example    # WiFi/MQTT 계정 템플릿 (secrets.h 는 .gitignore)
-  libraries/*.zip               # Edge Impulse export (Vision, KWS)
-```
+| 항목 | 구현 |
+|---|---|
+| I2S 드라이버 | IDF 4.4 legacy `driver/i2s.h`: `I2S_MODE_MASTER \| RX \| PDM`, 16 kHz, 16-bit, `ONLY_LEFT`, DMA 8×512 |
+| 핀 | `ws_io_num = 42` (PDM clock), `data_in_num = 41` |
+| 읽기 | `i2s_read()` 1 KB 단위 bulk 읽기로 정확히 `16000 × 2 s × 2 B = 64000 B` 를 PSRAM 버퍼에 수집. 부족하면 실패 처리 |
+| 대기 | 평소 `i2s_stop()`. 녹음 시 `i2s_start()` 후 200 ms 버림 (PDM 필터 안정화, 이전 DMA 데이터 제거) |
+| 검증 | 수집 바이트 = 기대값, 샘플 수 = 32000, 실제 소요 시간이 2000 ms ±10 % 아니면 경고 |
+| 후처리 | DC offset 제거 → 정수 게인(`AUDIO_GAIN`, 기본 4) + int16 포화, clipping 샘플 수 보고 |
+| WAV | 44 B 표준 PCM 헤더, little-endian, `fmt` = PCM/1ch/16000/32000 B/s/align 2/16-bit |
+| 메모리 | `heap_caps_malloc(MALLOC_CAP_SPIRAM)` + RAII 해제 (모든 반환 경로에서 free). 업로드는 같은 버퍼에서 스트리밍 (2차 복사 없음) |
+| 업로드 | `WiFiClient` 로 multipart/form-data 직접 스트리밍, `Content-Length` 계산, 실패 시 재시도(4xx 는 재시도 안 함) |
+| 지표 | `[metrics]` 줄: `capture_id, record_ms, wav_bytes, upload_ms, http, free_heap, free_psram` |
 
-## 동작 설계 (상태 머신)
+Seeed 위키 예제(`xiao_esp32s3_sense_mic`)는 `I2S.h` + `esp_i2s::i2s_read()` 를 쓰고, KWS 예제는 `driver/i2s.h` 를 직접 사용한다.
+본 펌웨어는 후자 방식(드라이버 직접 설정)을 택해 오류 코드를 직접 처리한다. 두 방식 모두 단일 샘플 `I2S.read()` 가 아닌 DMA bulk 읽기다.
 
-```
-IDLE --(vision: lying ≥ threshold, N 연속 프레임)--> LYING   : LYING_DETECTED 발행
-LYING --> LISTENING (window_ms 동안 KWS 실행)                  : LISTENING_STARTED
-LISTENING --(KWS "off" ≥ threshold)--> LIGHT_OFF_REQUESTED 발행 (cause_event_ids = [lying, keyword])
-LYING/LISTENING --(lying 해제)--> IDLE                         : LYING_LOST
-any --(오류)--> SYSTEM_ERROR
-```
+## 하드웨어에서 확인해야 할 위험 요소
 
-- 하나의 명령 흐름(LYING_DETECTED → … → LIGHT_OFF_REQUESTED)은 같은 `trace_id` 를 공유한다.
-- 카메라/마이크 원본 데이터는 전송하지 않는다. 추론 결과만 MQTT 로 발행.
-- `timing.capture_ms`, `dsp_ms`, `inference_ms` 는 `ei_impulse_result_t.timing` 과 `micros()` 로 측정.
-- 부팅 시 `status` topic 에 retained `online`, LWT 로 `offline` 등록.
-
-## 의존성 관리 계획
-
-1. Edge Impulse Studio 에서 Arduino library 로 export (버전 = Studio deployment 번호).
-2. zip 을 `libraries/` 에 두고 `models/*/MODEL_CARD.md` 에 버전·정확도·입력 크기 기록.
-   용량이 크면 Git LFS 사용 또는 CI 에서 Edge Impulse API 로 다운로드(API key 는 GitHub Secret).
-3. Vision 과 KWS 두 라이브러리를 동시에 링크할 때 심볼 충돌 가능 → 첫 통합 빌드에서 확인 필요.
+- PDM 마이크 원신호 크기와 DC offset 은 보드마다 다를 수 있다 → `AUDIO_GAIN` 조정 필요 가능
+- `ONLY_LEFT` 채널 선택이 실제 마이크 채널과 다르면 무음이 녹음된다 → 서버가 `all_zero_audio` 422 로 거부하고 시리얼에 `[WARN] very low signal` 출력
+- 실제 샘플링 속도 오차 → `Recorded 32000 samples in N ms` 의 N 확인

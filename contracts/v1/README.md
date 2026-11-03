@@ -4,11 +4,15 @@
 |---|---|
 | `event-envelope.schema.json` | 모든 이벤트 (`.../devices/{id}/events`, `.../simulator/{room}/events`, Controller↔Simulator WebSocket) |
 | `device-status.schema.json` | `.../devices/{id}/status` (retained, LWT) |
-| `topics.json` | Topic ↔ Schema ↔ QoS ↔ 발행/구독자 매핑 |
+| `voice-recording-response.schema.json` | voice-service `POST /api/v1/recordings` 응답 (API 테스트가 실제 응답을 이 스키마로 검증) |
+| `topics.json` | Topic ↔ Schema ↔ QoS ↔ 발행/구독자 매핑, HTTP 엔드포인트 |
 | `examples/valid/*.json` | 반드시 통과해야 하는 예시 |
 | `examples/invalid/*.json` | 반드시 거부되어야 하는 예시 (계약 회귀 방지) |
 
-예시 파일명 규칙: `event-*.json` → envelope 스키마, `status-*.json` → status 스키마.
+예시 파일명 규칙: `event-*.json` → envelope 스키마, `status-*.json` → status 스키마, `recording-*.json` → voice 응답 스키마.
+
+v1.1.0 (아키텍처 v2): `source` 에 `voice-service` 추가, `VOICE_KEYWORD_DETECTED` 는 voice-service/mock 만,
+`LIGHT_OFF_REQUESTED` 는 controller/mock 만 허용, `model.runtime` 에 `edge-impulse-linux` 추가 (DB: `20261103010000_allow_voice_service_source.sql`).
 
 검증:
 
@@ -31,7 +35,7 @@ python scripts/validate_contracts.py            # 스키마 자체 유효성 + �
 | LYING_DETECTED | device, mock | 필수 | label=`lying`, confidence, threshold |
 | LYING_LOST | device, mock | 필수 | label, confidence |
 | LISTENING_STARTED | device, mock | null | reason, window_ms |
-| VOICE_KEYWORD_DETECTED | device, mock | 필수 | keyword=`off`, confidence, threshold |
-| LIGHT_OFF_REQUESTED | device, mock | null | room_id, light_id, cause_event_ids |
+| VOICE_KEYWORD_DETECTED | voice-service, mock | 필수 | keyword=`off`, confidence, threshold, capture_id? |
+| LIGHT_OFF_REQUESTED | controller, mock | null | room_id, light_id, cause_event_ids |
 | LIGHT_OFF_APPLIED | simulator | null | room_id, light_id, request_event_id, result |
 | SYSTEM_ERROR | 모두 | null | component, code, message, recoverable |

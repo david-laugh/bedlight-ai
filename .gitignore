@@ -32,6 +32,23 @@ firmware/**/build/
 # Model datasets (개인 영상/음성 포함 가능)
 models/**/dataset/
 models/**/raw/
+models/voice/deploy/*
+!models/voice/deploy/.gitkeep
+!models/voice/deploy/README.md
+
+# Voice recordings (사용자 실제 음성 — 커밋 금지, README 의 관리 방식 참고)
+datasets/voice/raw/**/*
+!datasets/voice/raw/**/
+!datasets/voice/raw/**/.gitkeep
+datasets/voice/prepared/**/*
+!datasets/voice/prepared/**/
+!datasets/voice/prepared/**/.gitkeep
+datasets/voice/metadata.jsonl
+datasets/voice/segments.csv
+datasets/voice/.write-probe
+
+# Firmware local config (Wi-Fi / server address)
+firmware/**/config.h
 
 # Performance results
 tests/performance/results/

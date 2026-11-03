@@ -1,7 +1,9 @@
 # BedLight AI — Docker Compose
 #
-# 현재 단계: Repository scaffold.
+# 현재 단계: 음성 데이터셋 수집.
 #   - mqtt-broker   : 실제 동작 (Eclipse Mosquitto, 개발용 무인증 설정, localhost 바인딩)
+#   - voice-service : 실제 동작 (FastAPI, ESP32 WAV 업로드 수신/검증/저장, 포트 8001 LAN 노출)
+#                     KWS 추론은 미구현 (/api/v1/recognize -> 503)
 #   - controller    : PLACEHOLDER (기능 없음, 대기 프로세스만 실행)
 #   - db-writer     : PLACEHOLDER (기능 없음, 대기 프로세스만 실행, DB 접속 안 함)
 #   - simulator-web : PLACEHOLDER (정적 안내 페이지만 제공)
@@ -11,8 +13,9 @@
 #   docker compose up -d --build                 # 기본 서비스
 #   docker compose --profile test up --build     # mock-device 포함
 #
-# 보안: 모든 host 포트는 127.0.0.1 에만 바인딩한다. 무인증 MQTT 포트를
-#       외부(인터넷/공용망)에 노출하지 말 것. docs/security.md 참고.
+# 보안: voice-service(8001) 를 제외한 host 포트는 127.0.0.1 에만 바인딩한다.
+#       voice-service 는 ESP32 업로드를 위해 LAN 에 노출되므로 VOICE_UPLOAD_TOKEN 사용 권장.
+#       무인증 MQTT 포트와 8001 을 인터넷에 노출하지 말 것. docs/security.md 참고.
 
 name: bedlight-ai
 
@@ -57,6 +60,41 @@ services:
     depends_on:
       mqtt-broker:
         condition: service_healthy
+    networks: [bedlight-net]
+
+  voice-service:
+    build:
+      context: ./services/voice-service
+    image: bedlight/voice-service:dev
+    container_name: bedlight-voice-service
+    restart: unless-stopped
+    # Linux: set VOICE_UID/VOICE_GID to `id -u`/`id -g` so recordings are owned by you.
+    # Windows/macOS Docker Desktop: ownership is not enforced, defaults are fine.
+    user: "${VOICE_UID:-1000}:${VOICE_GID:-1000}"
+    # ESP32 is a separate device on the LAN, so this port is bound to all interfaces by default.
+    # Protect it with VOICE_UPLOAD_TOKEN and never port-forward it to the internet (docs/security.md).
+    ports:
+      - "${VOICE_BIND_ADDR:-0.0.0.0}:${VOICE_HOST_PORT:-8001}:8001"
+    environment:
+      VOICE_DATA_DIR: /data/voice
+      VOICE_MODEL_DIR: /models
+      VOICE_UPLOAD_TOKEN: ${VOICE_UPLOAD_TOKEN:-}
+      VOICE_ALLOWED_LABELS: off,unknown,noise
+      VOICE_SAMPLE_RATE: "16000"
+      VOICE_MIN_DURATION_MS: ${VOICE_MIN_DURATION_MS:-500}
+      VOICE_MAX_DURATION_MS: ${VOICE_MAX_DURATION_MS:-10000}
+      VOICE_MAX_UPLOAD_BYTES: ${VOICE_MAX_UPLOAD_BYTES:-1000000}
+    volumes:
+      # Bind mount: recordings persist on the PC in datasets/voice/ across container restarts.
+      - ${VOICE_DATASET_DIR:-./datasets/voice}:/data/voice
+      # Future Edge Impulse Linux (.eim) model deployment location (read-only).
+      - ./models/voice/deploy:/models:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks: [bedlight-net]
 
   db-writer:

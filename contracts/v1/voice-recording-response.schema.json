@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bedlight.local/contracts/v1/voice-recording-response.schema.json",
+  "title": "BedLight AI Voice Service - recording upload response v1",
+  "description": "Response body of POST /api/v1/recordings (HTTP 201 saved, 200 duplicate).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "capture_id", "label", "filename", "relative_path", "duration_ms", "sample_rate",
+    "channels", "bits_per_sample", "num_samples", "file_size", "status",
+    "validation_status", "warnings", "quality", "timing"
+  ],
+  "properties": {
+    "capture_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$" },
+    "label": { "enum": ["off", "unknown", "noise"] },
+    "filename": { "type": "string", "pattern": "^(off|unknown|noise)_[0-9]{8}T[0-9]{6}_[a-z0-9]{1,8}(_[0-9]+)?\\.wav$" },
+    "relative_path": { "type": "string", "pattern": "^raw/(off|unknown|noise)/[^/]+\\.wav$" },
+    "duration_ms": { "type": "number", "minimum": 0 },
+    "sample_rate": { "const": 16000 },
+    "channels": { "const": 1 },
+    "bits_per_sample": { "const": 16 },
+    "num_samples": { "type": "integer", "minimum": 1 },
+    "file_size": { "type": "integer", "minimum": 45 },
+    "status": { "enum": ["saved", "duplicate"] },
+    "validation_status": { "enum": ["valid", "valid_with_warnings"] },
+    "warnings": {
+      "type": "array",
+      "items": { "enum": ["likely_silent", "clipping", "high_dc_offset"] }
+    },
+    "quality": {
+      "type": "object",
+      "required": ["num_samples", "rms", "rms_dbfs", "peak", "peak_dbfs", "clipped_samples", "clipping", "dc_offset", "all_zero", "likely_silent"],
+      "properties": {
+        "num_samples": { "type": "integer" },
+        "rms": { "type": "number" },
+        "rms_dbfs": { "type": "number" },
+        "peak": { "type": "integer" },
+        "peak_dbfs": { "type": "number" },
+        "clipped_samples": { "type": "integer" },
+        "clipping": { "type": "boolean" },
+        "dc_offset": { "type": "number" },
+        "all_zero": { "const": false },
+        "likely_silent": { "type": "boolean" },
+        "warnings": { "type": "array" }
+      }
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["receive_ms", "validate_ms", "save_ms", "total_ms"],
+      "properties": {
+        "receive_ms": { "type": "number", "minimum": 0 },
+        "validate_ms": { "type": "number", "minimum": 0 },
+        "save_ms": { "type": "number", "minimum": 0 },
+        "total_ms": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

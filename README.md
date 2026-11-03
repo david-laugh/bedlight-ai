@@ -1,38 +1,56 @@
 # BedLight AI
 
-XIAO ESP32S3 Sense 의 카메라로 사람이 침대에 누운 상태를 감지하고, 내장 마이크로 음성 명령 **"off"** 를 인식하면
+XIAO ESP32S3 Sense 의 카메라로 사람이 침대에 누운 상태를 감지하고, 음성 명령 **"off"** 를 인식하면
 가상 침실 시뮬레이터의 조명을 끄는 Edge AI 기반 스마트 침실 시스템.
 
-- **AI 추론은 ESP32 에서만** 수행한다 (Edge Impulse: Vision 분류 + Keyword Spotting).
-- Docker 서비스는 이벤트 중계(MQTT), 가상 환경(웹 시뮬레이터), 로그 저장(Supabase), 성능 측정을 담당한다.
+아키텍처 v2:
+- **ESP32**: Vision 모델(누운 자세)을 온디바이스 실행(예정), 내장 PDM 마이크로 **녹음해 중앙 Voice Service 로 전송**. ESP32 는 음성 모델을 실행하지 않는다.
+- **voice-service (중앙 서버)**: WAV 수신·검증·저장, 향후 Edge Impulse KWS 모델로 "off" 인식.
+- **IoT 제어**: controller 가 결과를 검증해 MQTT 로 가상 전등 제어, simulator-web 에서 ON/OFF, Supabase 에 이벤트 저장.
 
-> ## 현재 상태: Repository scaffold
-> 설계·계약·Docker 환경·CI 골격만 존재한다. **펌웨어, AI 모델, Controller/DB Writer 로직, 시뮬레이터, Mock 이벤트 생성은 구현되지 않았다.**
-> placeholder 컨테이너가 실행된다는 것은 해당 서비스 기능이 동작한다는 의미가 아니다.
+> ## 현재 단계: 음성 데이터셋 수집
+> **구현됨**: ESP32 녹음·WAV·업로드 펌웨어 (Core 2.0.17 컴파일 확인), voice-service 업로드 API (테스트·컨테이너 검증),
+> WAV 검증·Edge Impulse 전처리 스크립트, CI.
+> **미검증**: 실제 보드에서의 녹음·업로드 (하드웨어 수동 테스트 필요).
+> **미구현**: Vision, 서버 KWS 추론, controller/db-writer/simulator 로직, mock 이벤트 생성.
 
 ## 구성
 
 ```
-ESP32 ──MQTT──▶ mqtt-broker ──▶ controller ◀──WebSocket──▶ simulator-web
-mock-device ──▶ mqtt-broker ──▶ db-writer ──HTTPS──▶ Supabase PostgreSQL
+ESP32 ──HTTP WAV──▶ voice-service :8001 ──▶ ./datasets/voice/raw/<label>/*.wav
+ESP32 ──MQTT(예정)─▶ mqtt-broker ──▶ controller ──MQTT(예정)──▶ simulator-web
+                     mqtt-broker ──▶ db-writer ──HTTPS──▶ Supabase PostgreSQL
+mock-device ──▶ mqtt-broker
 ```
 
 | 서비스 | 기술 | 상태 |
 |---|---|---|
+| `voice-service` | Python 3.11 / FastAPI, `0.0.0.0:8001` (LAN) | **동작** (데이터 수집). 추론 미구현 (503) |
 | `mqtt-broker` | Eclipse Mosquitto 2.0 | 동작 (개발용 무인증, `127.0.0.1:1883`) |
 | `controller` | Python 3.11 / FastAPI (예정) | placeholder |
 | `db-writer` | Python 3.11 (예정) | placeholder |
 | `simulator-web` | React + Vite (예정), 현재 nginx 정적 페이지 | placeholder (`127.0.0.1:8080`) |
 | `mock-device` | Python 3.11, compose profile `test` | placeholder |
 
-## 빠른 시작
+## 음성 녹음 빠른 시작
+
+1. PC: `docker compose up -d --build voice-service` → `curl http://127.0.0.1:8001/health`
+2. `firmware/xiao-esp32s3-sense/bedlight/config.example.h` → `config.h` 복사, Wi-Fi 와 **PC LAN IP** 입력
+3. Arduino IDE (esp32 core **2.0.17**, Board XIAO_ESP32S3, PSRAM **OPI**, USB CDC On Boot **Enabled**) 로 `bedlight.ino` 업로드
+4. Serial Monitor 115200 → `o` 입력 → `>>> SPEAK NOW <<<` 후 "off"
+5. PC 의 `datasets/voice/raw/off/` 에 WAV 생성 → **직접 재생해서 확인** → `python scripts/check_wav.py datasets/voice/raw`
+6. `python scripts/prepare_voice_dataset.py` → `prepared/review.html` 에서 청취 → Edge Impulse 업로드
+
+전체 절차: **[docs/voice-dataset.md](docs/voice-dataset.md)**
+
+## 전체 스택
 
 ```bash
-cp .env.example .env            # 선택. 없어도 기본값으로 기동됨 (Supabase 키는 아직 사용 안 함)
+cp .env.example .env            # 선택
 docker compose up -d --build
 docker compose ps
 docker compose --profile test up --build mock-device   # mock-device placeholder 확인
-docker compose --profile test down -v
+docker compose --profile test down
 ```
 
 검증 스크립트:
@@ -40,45 +58,45 @@ docker compose --profile test down -v
 ```bash
 bash scripts/check_structure.sh
 pip install -r scripts/requirements-ci.txt && python scripts/validate_contracts.py
+pip install -r services/voice-service/requirements.txt -r services/voice-service/requirements-dev.txt
+pytest -q services/voice-service/tests && pytest -q scripts/tests
 ```
 
 ## 디렉터리
 
 | 경로 | 내용 |
 |---|---|
-| `firmware/xiao-esp32s3-sense/` | 펌웨어 (미구현), 툴체인 버전 고정 `toolchain.env` |
-| `models/vision/`, `models/voice/` | Edge Impulse 모델 카드/설정 (미학습) |
-| `services/controller/` | MQTT ↔ WebSocket 중계 (placeholder) |
-| `services/db-writer/` | MQTT → Supabase 저장 (placeholder) |
-| `services/simulator-web/` | 가상 침실 웹 (placeholder 정적 페이지) |
+| `firmware/xiao-esp32s3-sense/bedlight/` | DATASET_RECORDING 펌웨어 (`bedlight.ino`, `wav_header.h`, `config.example.h`) |
+| `services/voice-service/` | FastAPI 음성 업로드/검증/저장 서비스 + 테스트 |
+| `datasets/voice/` | 녹음 저장소 (bind mount, WAV 는 git 제외) |
+| `models/vision/`, `models/voice/` | 모델 카드/배포 위치 (`models/voice/deploy/*.eim` 예정) |
+| `services/controller/`, `services/db-writer/`, `services/simulator-web/` | placeholder |
 | `infra/mosquitto/` | Mosquitto 개발 설정 + 인증/ACL 템플릿 |
-| `contracts/v1/` | 이벤트 JSON Schema, topic 매핑, valid/invalid 예시 |
-| `supabase/migrations/` | `device_events` 테이블 + RLS (미적용) |
-| `tests/mock-device/` | ESP32 모의 이벤트 생성기 (placeholder) |
-| `tests/integration/`, `tests/performance/` | 통합/성능 테스트 (미작성) |
-| `scripts/` | 구조 검사, 계약 검사 |
+| `contracts/v1/` | 이벤트·응답 JSON Schema, topic/HTTP 매핑, valid/invalid 예시 |
+| `supabase/migrations/` | `device_events` + RLS, voice-service source 추가 (미적용) |
+| `scripts/` | `check_wav.py`, `prepare_voice_dataset.py`, 구조·계약 검사 |
+| `tests/` | mock-device, integration, performance (placeholder/계획) |
 | `docs/` | 설계 문서 |
-| `.github/workflows/` | CI |
 
 ## 문서
 
-- [아키텍처](docs/architecture.md)
-- [인터페이스 계약 (MQTT/WS/컨테이너 I/O)](docs/interfaces.md)
-- [DB 설계](docs/database.md)
-- [보안](docs/security.md)
-- [테스트 계획](docs/test-plan.md)
-- [성능·병목 평가 계획](docs/performance-plan.md)
+- [아키텍처 v2](docs/architecture.md)
+- [음성 데이터셋 수집 가이드](docs/voice-dataset.md)
+- [중앙 음성 추론 계획](docs/voice-inference-plan.md)
+- [인터페이스 계약](docs/interfaces.md) · [DB 설계](docs/database.md) · [보안](docs/security.md)
+- [테스트 계획](docs/test-plan.md) · [성능·병목 평가 계획](docs/performance-plan.md)
 
 ## CI
 
-| Workflow | 내용 | 현재 실행되는 것 |
-|---|---|---|
-| `scaffold-ci.yml` | 구조, 스키마, compose config/build, smoke | 전부 |
-| `firmware-ci.yml` | arduino-cli + ESP32 Core 2.0.17 컴파일 | detect 만 (스케치 없음 → compile **skipped**) |
-| `services-ci.yml` | 계약 예시 검사, pytest, 프론트 빌드, 통합 | contracts 만 (나머지 대상 없음 → **skipped**) |
+| Workflow | 내용 |
+|---|---|
+| `scaffold-ci.yml` | 구조 검사, 스키마 유효성, compose config/build, smoke (MQTT 왕복, voice-service 업로드→저장→재시작 유지→잘못된 파일 거부) |
+| `firmware-ci.yml` | `wav_header.h` g++ 호스트 테스트 + 서버 검증기 교차 확인, `bedlight.ino` Core 2.0.17 컴파일 |
+| `services-ci.yml` | 계약 예시 검사, pytest (voice-service, scripts), 프론트/통합 (대상 없으면 skipped) |
 
 ## 보안 요약
 
-- 실제 키는 커밋하지 않는다. `.env.example` 은 placeholder 만 포함.
-- Supabase secret/service_role key 는 **db-writer 컨테이너에만** 주입.
-- 무인증 MQTT 1883 포트를 인터넷에 공개하지 않는다. 자세한 내용: [docs/security.md](docs/security.md)
+- 실제 키·Wi-Fi 정보는 커밋하지 않는다 (`.env`, `firmware/**/config.h` git ignore, CI 검사).
+- 녹음 파일은 개인 데이터 → git 제외.
+- voice-service 8001 은 LAN 노출 → `VOICE_UPLOAD_TOKEN` 권장, 인터넷 포트포워딩 금지.
+- Supabase secret key 는 db-writer 에만. 무인증 MQTT 1883 은 localhost 전용. 자세한 내용: [docs/security.md](docs/security.md)
