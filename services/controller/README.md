@@ -1,6 +1,8 @@
 # services/controller
 
-> **상태: PLACEHOLDER** — 컨테이너는 빌드·실행되지만 대기 프로세스만 동작한다. 이벤트를 처리하지 않는다.
+> **상태 (펌웨어 0.3 단계): 구현됨** — MQTT 상태 집계, voice-service 세션 폴링, WebSocket `/ws`, `GET /api/v1/state`, `POST /api/v1/light`(수동, source=simulator). 음성 모델이 없어 **자동 소등은 미구현**. 상세: docs/runtime-pipeline.md §6
+
+
 
 ## 역할 (향후 구현)
 

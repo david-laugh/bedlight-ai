@@ -15,6 +15,8 @@ def _int(name: str, default: int) -> int:
 class Settings:
     data_dir: Path = Path("/data/voice")
     model_dir: Path = Path("/models")
+    runtime_dir: Path = Path("/data/runtime")
+    max_chunk_ms: int = 5000
     allowed_labels: tuple[str, ...] = ("off", "unknown", "noise")
     sample_rate: int = 16000
     channels: int = 1
@@ -32,6 +34,8 @@ class Settings:
         return cls(
             data_dir=Path(os.getenv("VOICE_DATA_DIR", "/data/voice")),
             model_dir=Path(os.getenv("VOICE_MODEL_DIR", "/models")),
+            runtime_dir=Path(os.getenv("VOICE_RUNTIME_DIR", "/data/runtime")),
+            max_chunk_ms=_int("VOICE_MAX_CHUNK_MS", 5000),
             allowed_labels=labels,
             sample_rate=_int("VOICE_SAMPLE_RATE", 16000),
             min_duration_ms=_int("VOICE_MIN_DURATION_MS", 500),

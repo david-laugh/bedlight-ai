@@ -70,19 +70,20 @@ jobs:
             wait
             test "$(cat /tmp/recv)" = "ping"'
 
-      - name: Simulator placeholder page responds
-        run: curl -fsS http://127.0.0.1:8080/ | grep -q "PLACEHOLDER"
-
-      - name: Placeholder service containers stay up
+      - name: Simulator dashboard responds
         run: |
-          docker compose up -d controller db-writer
-          sleep 5
-          for s in controller db-writer; do
-            state=$(docker inspect -f '{{.State.Status}}' "bedlight-$s")
-            echo "$s: $state"
-            test "$state" = "running"
-          done
-          docker compose logs controller db-writer | grep -q "PLACEHOLDER ONLY"
+          curl -fsS http://127.0.0.1:8080/ | grep -q "<title>BedLight AI Simulator</title>"
+          curl -fsS http://127.0.0.1:8080/app.js | grep -q "/ws"
+
+      - name: Controller and db-writer start
+        run: |
+          mkdir -p runtime-data/db-writer runtime-data/audio
+          VOICE_UID=$(id -u); VOICE_GID=$(id -g); export VOICE_UID VOICE_GID
+          docker compose up -d --wait --wait-timeout 90 controller db-writer
+          curl -fsS http://127.0.0.1:8000/healthz
+          curl -fsS http://127.0.0.1:8000/api/v1/state | python3 -c "import json,sys; s=json.load(sys.stdin); assert s['light']['auto_control'] is False"
+          test "$(docker inspect -f '{{.State.Status}}' bedlight-db-writer)" = "running"
+          docker compose logs db-writer | grep -q "DRY-RUN"
 
       - name: Voice service - upload synthetic WAV and verify persistence
         env:

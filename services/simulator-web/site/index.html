@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BedLight AI Simulator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>BedLight AI — 가상 침실</h1>
+    <span id="conn" class="pill off">controller 연결 안 됨</span>
+  </header>
+
+  <div class="notice" id="autoNotice">자동 소등 미구현: 중앙 음성 모델이 아직 배포되지 않아 조명은 "off" 음성으로 꺼지지 않습니다. 아래 버튼은 시뮬레이터 수동 제어(source=simulator)입니다.</div>
+
+  <main>
+    <section class="room card">
+      <svg id="scene" viewBox="0 0 400 260" role="img" aria-label="bedroom">
+        <defs>
+          <radialGradient id="glow" cx="50%" cy="0%" r="90%">
+            <stop offset="0%" stop-color="#fde68a" stop-opacity=".85"/>
+            <stop offset="100%" stop-color="#fde68a" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <rect x="0" y="0" width="400" height="260" class="wall" id="wall"/>
+        <rect x="0" y="0" width="400" height="260" fill="url(#glow)" id="lightGlow"/>
+        <line x1="200" y1="0" x2="200" y2="22" class="cord"/>
+        <circle cx="200" cy="30" r="10" id="bulb" class="bulb on"/>
+        <rect x="40" y="170" width="220" height="40" rx="6" class="bed"/>
+        <rect x="40" y="150" width="40" height="60" rx="6" class="bed head"/>
+        <rect x="50" y="160" width="40" height="14" rx="5" class="pillow"/>
+        <g id="personLying" class="person hidden">
+          <circle cx="78" cy="158" r="11"/>
+          <rect x="90" y="152" width="120" height="16" rx="8"/>
+        </g>
+        <g id="personStanding" class="person hidden">
+          <circle cx="320" cy="110" r="12"/>
+          <rect x="311" y="124" width="18" height="70" rx="8"/>
+        </g>
+        <text x="20" y="245" id="sceneLabel" class="scene-label">감지 없음</text>
+      </svg>
+      <div class="light-controls">
+        <span>조명: <b id="lightState">ON</b> <small id="lightBy"></small></span>
+        <button id="btnOn">켜기</button>
+        <button id="btnOff">끄기</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>ESP32</h2>
+      <dl>
+        <dt>장치</dt><dd id="devId">-</dd>
+        <dt>연결</dt><dd id="devOnline">-</dd>
+        <dt>source</dt><dd id="devSource">-</dd>
+        <dt>펌웨어</dt><dd id="devFw">-</dd>
+        <dt>Vision</dt><dd id="visLabel">-</dd>
+        <dt>Fall conf</dt><dd id="visFall">-</dd>
+        <dt>Standing conf</dt><dd id="visStand">-</dd>
+        <dt>추론 시간</dt><dd id="visInf">-</dd>
+        <dt>FPS</dt><dd id="visFps">-</dd>
+      </dl>
+    </section>
+
+    <section class="card">
+      <h2>LISTENING</h2>
+      <div id="listenBadge" class="pill off">WATCHING</div>
+      <div class="bar"><div id="listenBar"></div></div>
+      <p>남은 오디오 활성 시간: <b id="listenRemain">-</b></p>
+      <p class="mono" id="listenSession"></p>
+      <p>연장 횟수: <span id="listenExt">-</span></p>
+      <h3>장치 업로드</h3>
+      <p>청크 전송 성공 <b id="devSent">0</b> / 실패 <b id="devFail">0</b> · 마지막 업로드 <span id="devUp">-</span></p>
+    </section>
+
+    <section class="card">
+      <h2>중앙 서버 오디오 수신</h2>
+      <dl>
+        <dt>voice-service</dt><dd id="srvReach">-</dd>
+        <dt>세션</dt><dd id="srvSession" class="mono">-</dd>
+        <dt>수신 청크</dt><dd id="srvChunks">-</dd>
+        <dt>수신 길이</dt><dd id="srvDur">-</dd>
+        <dt>누락 seq</dt><dd id="srvMissing">-</dd>
+        <dt>샘플 불연속</dt><dd id="srvDisc">-</dd>
+        <dt>DMA overflow</dt><dd id="srvOvf">-</dd>
+        <dt>final / 완전성</dt><dd id="srvComplete">-</dd>
+      </dl>
+    </section>
+
+    <section class="card wide">
+      <h2>최근 이벤트</h2>
+      <table><thead><tr><th>시각</th><th>source</th><th>event</th><th>conf</th></tr></thead><tbody id="events"></tbody></table>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

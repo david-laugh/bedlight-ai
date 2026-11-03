@@ -1,19 +1,19 @@
-# BedLight AI — db-writer
-# 현재: PLACEHOLDER 이미지. MQTT 구독/스키마 검증/Supabase INSERT 로직은 아직 구현되지 않았다.
+# BedLight AI — db-writer: MQTT events -> JSON Schema validation -> de-dup -> Supabase (or DRY-RUN file)
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    CONTRACTS_DIR=/app/contracts/v1
 
-RUN useradd --create-home --uid 10001 app
 WORKDIR /app
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+COPY app/ /app/app/
+# contracts come from the compose additional build context "contracts" (repo ./contracts)
+COPY --from=contracts v1/ /app/contracts/v1/
 
-COPY placeholder.py /app/placeholder.py
-
+RUN useradd --create-home --uid 10001 app && mkdir -p /data/db-writer && chown -R app /data/db-writer
 USER app
 
-LABEL org.opencontainers.image.title="bedlight-db-writer" \
-      org.opencontainers.image.description="PLACEHOLDER - not functional" \
-      bedlight.status="placeholder"
-
-CMD ["python", "/app/placeholder.py"]
+LABEL org.opencontainers.image.title="bedlight-db-writer" bedlight.status="implemented"
+CMD ["python", "-m", "app.main"]
