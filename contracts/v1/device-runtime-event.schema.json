@@ -2,93 +2,367 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://bedlight.local/contracts/v1/device-runtime-event.schema.json",
   "title": "BedLight AI device runtime event v1.2",
-  "description": "ESP32 firmware 0.3 events on bedlight/v1/devices/{device_id}/events (Fall-triggered listening). Also used by controller for simulator/manual events (source != device).",
+  "description": "Runtime events v1.2: ESP32 firmware 0.3+ (devices/{id}/events), voice-service keyword results (voice/{id}/events) and controller/simulator light events (simulator/{room}/events).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "event_id", "trace_id", "source", "device_id", "event_type", "model", "confidence", "timestamp_ms", "inference_ms"],
+  "required": [
+    "schema_version",
+    "event_id",
+    "trace_id",
+    "source",
+    "device_id",
+    "event_type",
+    "model",
+    "confidence",
+    "timestamp_ms",
+    "inference_ms"
+  ],
   "properties": {
-    "schema_version": { "type": "string", "pattern": "^1\\.2\\.[0-9]+$" },
-    "event_id": { "$ref": "#/$defs/uuid" },
-    "trace_id": { "$ref": "#/$defs/uuid", "description": "LISTENING session id for session events; fresh uuid otherwise." },
-    "source": { "enum": ["device", "mock", "simulator", "controller", "voice-service"] },
-    "device_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,63}$" },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^1\\.2\\.[0-9]+$"
+    },
+    "event_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "trace_id": {
+      "$ref": "#/$defs/uuid",
+      "description": "LISTENING session id for session events; fresh uuid otherwise."
+    },
+    "source": {
+      "enum": [
+        "device",
+        "mock",
+        "simulator",
+        "controller",
+        "voice-service"
+      ]
+    },
+    "device_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+    },
     "event_type": {
-      "enum": ["VISION_FALL_DETECTED", "VISION_STANDING_DETECTED", "LISTENING_STARTED", "LISTENING_EXTENDED",
-               "AUDIO_CHUNK_SENT", "LISTENING_STOPPED", "SYSTEM_ERROR", "LIGHT_STATE_CHANGED"]
+      "enum": [
+        "VISION_FALL_DETECTED",
+        "VISION_STANDING_DETECTED",
+        "LISTENING_STARTED",
+        "LISTENING_EXTENDED",
+        "AUDIO_CHUNK_SENT",
+        "LISTENING_STOPPED",
+        "SYSTEM_ERROR",
+        "LIGHT_STATE_CHANGED",
+        "VOICE_KEYWORD_DETECTED"
+      ]
     },
     "model": {
       "oneOf": [
-        { "type": "null" },
+        {
+          "type": "null"
+        },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["name", "version", "task", "runtime"],
+          "required": [
+            "name",
+            "version",
+            "task",
+            "runtime"
+          ],
           "properties": {
-            "name": { "type": "string", "minLength": 1, "maxLength": 64 },
-            "version": { "type": "string", "minLength": 1, "maxLength": 32 },
-            "task": { "enum": ["object-detection", "vision-classification", "keyword-spotting"] },
-            "runtime": { "enum": ["edge-impulse", "edge-impulse-linux", "mock"] }
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "task": {
+              "enum": [
+                "object-detection",
+                "vision-classification",
+                "keyword-spotting"
+              ]
+            },
+            "runtime": {
+              "enum": [
+                "edge-impulse",
+                "edge-impulse-linux",
+                "mock"
+              ]
+            }
           }
         }
       ]
     },
-    "confidence": { "oneOf": [{ "type": "null" }, { "type": "number", "minimum": 0, "maximum": 1 }] },
-    "timestamp_ms": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 0 }], "description": "Unix epoch ms (null until the device SNTP-syncs)." },
-    "device_uptime_ms": { "type": "integer", "minimum": 0 },
-    "inference_ms": { "oneOf": [{ "type": "null" }, { "type": "number", "minimum": 0 }], "description": "Vision inference time (vision/listening events) or HTTP upload time (AUDIO_CHUNK_SENT)." },
-    "session_id": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/uuid" }] },
-    "data": { "type": "object" }
+    "confidence": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      ]
+    },
+    "timestamp_ms": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "integer",
+          "minimum": 0
+        }
+      ],
+      "description": "Unix epoch ms (null until the device SNTP-syncs)."
+    },
+    "device_uptime_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "inference_ms": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "number",
+          "minimum": 0
+        }
+      ],
+      "description": "Vision inference time (vision/listening events) or HTTP upload time (AUDIO_CHUNK_SENT)."
+    },
+    "session_id": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/uuid"
+        }
+      ]
+    },
+    "data": {
+      "type": "object"
+    }
   },
   "allOf": [
     {
-      "if": { "properties": { "event_type": { "enum": ["VISION_FALL_DETECTED", "VISION_STANDING_DETECTED"] } } },
+      "if": {
+        "properties": {
+          "event_type": {
+            "enum": [
+              "VISION_FALL_DETECTED",
+              "VISION_STANDING_DETECTED"
+            ]
+          }
+        }
+      },
       "then": {
         "properties": {
-          "confidence": { "type": "number" },
-          "data": { "type": "object", "required": ["label", "fall_confidence", "standing_confidence", "threshold"] }
+          "confidence": {
+            "type": "number"
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "label",
+              "fall_confidence",
+              "standing_confidence",
+              "threshold"
+            ]
+          }
         }
       }
     },
     {
-      "if": { "properties": { "event_type": { "enum": ["LISTENING_STARTED", "LISTENING_EXTENDED"] } } },
-      "then": {
-        "required": ["session_id", "data"],
-        "properties": { "session_id": { "$ref": "#/$defs/uuid" }, "data": { "type": "object", "required": ["hold_ms", "remaining_ms"] } }
-      }
-    },
-    {
-      "if": { "properties": { "event_type": { "const": "AUDIO_CHUNK_SENT" } } },
-      "then": {
-        "required": ["session_id", "data"],
-        "properties": { "data": { "type": "object", "required": ["ok", "http_status", "upload_ms", "sequence", "sample_start", "samples", "is_final"] } }
-      }
-    },
-    {
-      "if": { "properties": { "event_type": { "const": "LISTENING_STOPPED" } } },
-      "then": {
-        "required": ["session_id", "data"],
-        "properties": { "data": { "type": "object", "required": ["duration_ms", "extensions"] } }
-      }
-    },
-    {
-      "if": { "properties": { "event_type": { "const": "SYSTEM_ERROR" } } },
-      "then": {
-        "required": ["data"],
-        "properties": { "data": { "type": "object", "required": ["component", "code", "message", "recoverable"] } }
-      }
-    },
-    {
-      "if": { "properties": { "event_type": { "const": "LIGHT_STATE_CHANGED" } } },
-      "then": {
-        "required": ["data"],
+      "if": {
         "properties": {
-          "source": { "enum": ["simulator", "controller"] },
-          "data": { "type": "object", "required": ["light_on", "reason"] }
+          "event_type": {
+            "enum": [
+              "LISTENING_STARTED",
+              "LISTENING_EXTENDED"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "session_id",
+          "data"
+        ],
+        "properties": {
+          "session_id": {
+            "$ref": "#/$defs/uuid"
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "hold_ms",
+              "remaining_ms"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "AUDIO_CHUNK_SENT"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "session_id",
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": [
+              "ok",
+              "http_status",
+              "upload_ms",
+              "sequence",
+              "sample_start",
+              "samples",
+              "is_final"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "LISTENING_STOPPED"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "session_id",
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": [
+              "duration_ms",
+              "extensions"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "SYSTEM_ERROR"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": [
+              "component",
+              "code",
+              "message",
+              "recoverable"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "LIGHT_STATE_CHANGED"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "source": {
+            "enum": [
+              "simulator",
+              "controller",
+              "mock"
+            ]
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "light_on",
+              "reason"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "VOICE_KEYWORD_DETECTED"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "session_id",
+          "data"
+        ],
+        "properties": {
+          "source": {
+            "enum": [
+              "voice-service",
+              "mock"
+            ]
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "session_id": {
+            "$ref": "#/$defs/uuid"
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "keyword",
+              "threshold",
+              "window_start_sample",
+              "window_samples",
+              "scores"
+            ]
+          }
         }
       }
     }
   ],
   "$defs": {
-    "uuid": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" }
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    }
   }
 }

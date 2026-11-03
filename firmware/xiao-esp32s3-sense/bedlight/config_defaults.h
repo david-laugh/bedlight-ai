@@ -98,4 +98,11 @@
 #define NTP_SERVER "pool.ntp.org"
 #endif
 
-#define FIRMWARE_VERSION "0.3.0-runtime"
+// ---------- Virtual light gate ----------
+// 1 = follow the simulator wall switch (retained bedlight/v1/lights/{ROOM_ID}/state):
+//     light OFF -> IDLE (no vision, no audio); light ON or unknown -> normal Fall watching.
+#ifndef LIGHT_GATE_ENABLED
+#define LIGHT_GATE_ENABLED 1
+#endif
+
+#define FIRMWARE_VERSION "0.4.0-lightgate"

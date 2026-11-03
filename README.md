@@ -85,6 +85,7 @@ pytest -q services/voice-service/tests && pytest -q scripts/tests
 ## 문서
 
 - [아키텍처 v2](docs/architecture.md)
+- [조명 게이트 + 박수(off) 소등 파이프라인 (펌웨어 0.4)](docs/light-gated-pipeline.md)
 - [음성 데이터셋 수집 가이드](docs/voice-dataset.md)
 - [중앙 음성 추론 계획](docs/voice-inference-plan.md)
 - [인터페이스 계약](docs/interfaces.md) · [DB 설계](docs/database.md) · [보안](docs/security.md)

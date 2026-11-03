@@ -25,5 +25,10 @@ size_t buildEvent(char* out, size_t n, const char* event_type, const char* trace
 
 int64_t epochMs();       // -1 until SNTP synced
 
+// Virtual light state (retained bedlight/v1/lights/{ROOM_ID}/state, published for the simulator wall switch).
+// -1 = unknown (no message yet), 0 = OFF, 1 = ON. Thread-safe read.
+int lightState();
+uint32_t lightStateUpdates();
+
 }  // namespace mqtt
 }  // namespace bedlight

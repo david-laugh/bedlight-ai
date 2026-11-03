@@ -1,4 +1,8 @@
-// BedLight AI — XIAO ESP32S3 Sense firmware 0.3.0
+// BedLight AI — XIAO ESP32S3 Sense firmware 0.4.0 (light gate)
+//
+// Light gate (0.4): follows the virtual light (retained MQTT bedlight/v1/lights/{ROOM_ID}/state).
+//   light OFF -> IDLE: no camera inference, no listening (an active session stops immediately, reason light_off)
+//   light ON / unknown -> RUNTIME below
 //
 // Modes
 //   RUNTIME (default)   : camera + Edge Impulse FOMO (Fall/Standing). Fall >= threshold -> LISTENING:
@@ -83,6 +87,18 @@ struct ChunkMsg {
 };
 
 static const char* kStateName[] = {"WATCHING", "LISTENING"};
+
+// NOTE: keep all function definitions below the type definitions above — the Arduino .ino preprocessor
+// inserts auto-generated prototypes right before the first function definition.
+
+// true when the virtual light is known to be OFF (gate closed). Unknown (no retained state yet) = open.
+static bool lightGateClosed() { return LIGHT_GATE_ENABLED && mqtt::lightState() == 0; }
+
+static const char* gateName(bool listening) {
+  if (!g_runtimeEnabled) return "paused";
+  if (lightGateClosed()) return "idle_light_off";
+  return listening ? "listening" : "watching";
+}
 
 // ============================================================================
 // Helpers
@@ -182,20 +198,22 @@ static void handleTransition(Transition tr, uint32_t now, float conf, float inf_
   } else if (tr == Transition::STOPPED) {
     Session s;
     uint32_t ext, dur;
+    const char* reason;
     lockState();
     g_session.active = false;  // audioTask flushes the final chunk and stops I2S
     s = g_session;
     ext = g_sm.extensions();
     dur = g_sm.lastSessionDurationMs();
+    reason = g_sm.lastStopReason() == StopReason::FORCED ? "light_off" : "hold_expired";
     unlockState();
     snprintf(data, sizeof(data),
-             "{\"duration_ms\":%u,\"extensions\":%u,\"hold_ms\":%u,\"chunks_queued\":%u,\"chunks_sent\":%u,"
-             "\"chunks_failed\":%u,\"chunks_dropped\":%u,\"dma_overflows\":%u}",
-             (unsigned)dur, (unsigned)ext, (unsigned)LISTEN_HOLD_MS, (unsigned)s.chunks_queued,
+             "{\"reason\":\"%s\",\"duration_ms\":%u,\"extensions\":%u,\"hold_ms\":%u,\"chunks_queued\":%u,"
+             "\"chunks_sent\":%u,\"chunks_failed\":%u,\"chunks_dropped\":%u,\"dma_overflows\":%u}",
+             reason, (unsigned)dur, (unsigned)ext, (unsigned)LISTEN_HOLD_MS, (unsigned)s.chunks_queued,
              (unsigned)s.chunks_sent, (unsigned)s.chunks_failed, (unsigned)s.chunks_dropped, (unsigned)s.overflows);
     publish("LISTENING_STOPPED", s.id, s.id, false, -1, -1, data);
-    Serial.printf("[STATE] LISTENING -> WATCHING  session=%s duration=%u ms extensions=%u\n", s.id, (unsigned)dur,
-                  (unsigned)ext);
+    Serial.printf("[STATE] LISTENING -> WATCHING  session=%s duration=%u ms extensions=%u reason=%s\n", s.id,
+                  (unsigned)dur, (unsigned)ext, reason);
   }
 }
 
@@ -208,11 +226,19 @@ static void visionTask(void*) {
     systemError("vision-model", "IMAGE_BUFFER_ALLOC_FAILED", "96x96 buffer", false);
     vTaskDelete(NULL);
   }
+  bool idle = false;
   for (;;) {
-    if (!g_runtimeEnabled) {
+    if (!g_runtimeEnabled || lightGateClosed()) {
+      if (!idle) {
+        idle = true;
+        lockState();
+        g_sm.resetLabel();  // the next detection after resuming emits a fresh edge
+        unlockState();
+      }
       vTaskDelay(pdMS_TO_TICKS(100));
       continue;
     }
+    idle = false;
     const uint32_t t0 = millis();
     uint32_t capture_ms = 0;
     if (!camera::captureGray96(img, &capture_ms)) {
@@ -411,7 +437,7 @@ static void audioTask(void*) {
 // Network task
 // ============================================================================
 static void publishStatus() {
-  static char buf[1100];
+  static char buf[1200];
   uint32_t now = millis();
   lockState();
   bool listening = g_sm.listening();
@@ -428,7 +454,8 @@ static void publishStatus() {
            "{\"schema_version\":\"1.2.0\",\"source\":\"device\",\"device_id\":\"%s\",\"state\":\"online\","
            "\"firmware_version\":\"%s\",\"uptime_ms\":%lu,\"free_heap_bytes\":%u,\"free_psram_bytes\":%u,"
            "\"wifi_rssi_dbm\":%d,\"models\":[{\"name\":\"%s\",\"version\":\"ei-%d-v%d\",\"task\":\"object-detection\"}],"
-           "\"runtime\":{\"vision_enabled\":%s,\"camera_ok\":%s,\"mic_ok\":%s,\"runtime_enabled\":%s,"
+           "\"runtime\":{\"gate\":\"%s\",\"light_on\":%s,"
+           "\"vision_enabled\":%s,\"camera_ok\":%s,\"mic_ok\":%s,\"runtime_enabled\":%s,"
            "\"listening\":%s,\"remaining_ms\":%u,\"hold_ms\":%u,\"session_id\":%s%s%s,\"label\":\"%s\","
            "\"fall_confidence\":%.4f,\"standing_confidence\":%.4f,\"threshold\":%.2f,\"frames\":%u,\"fps\":%.2f,"
            "\"inference_ms_avg\":%.1f,\"inference_ms_last\":%u,\"capture_ms_last\":%u,\"camera_failures\":%u,"
@@ -437,6 +464,7 @@ static void publishStatus() {
            "\"min_free_heap_bytes\":%u}}",
            DEVICE_ID, FIRMWARE_VERSION, (unsigned long)now, (unsigned)ESP.getFreeHeap(),
            (unsigned)ESP.getFreePsram(), WiFi.RSSI(), VISION_MODEL_NAME, vision::projectId(), vision::deployVersion(),
+           gateName(listening), mqtt::lightState() < 0 ? "null" : (mqtt::lightState() ? "true" : "false"),
            g_visionOk ? "true" : "false", g_cameraOk ? "true" : "false", g_micOk ? "true" : "false",
            g_runtimeEnabled ? "true" : "false", listening ? "true" : "false", (unsigned)remaining,
            (unsigned)LISTEN_HOLD_MS, listening ? "\"" : "", listening ? sid : "null", listening ? "\"" : "", label,
@@ -641,7 +669,7 @@ static void recordDataset(const char* label) {
 // ============================================================================
 static void printHelp() {
   Serial.println();
-  Serial.println("BedLight AI " FIRMWARE_VERSION " - RUNTIME (Fall -> listen) + DATASET_RECORDING");
+  Serial.println("BedLight AI " FIRMWARE_VERSION " - RUNTIME (Fall -> listen, gated by virtual light) + DATASET_RECORDING");
   Serial.println("  o / u / n : record 'off' / 'unknown' / 'noise' dataset sample (2 s)");
   Serial.println("  s : status          v : vision/audio statistics");
   Serial.println("  p : toggle per-frame vision print");
@@ -661,6 +689,8 @@ static void printStatus() {
   Serial.printf("Firmware %s  Device %s  uptime %lu ms\n", FIRMWARE_VERSION, DEVICE_ID, (unsigned long)now);
   Serial.printf("Camera: %s  Vision model: %s (%s)  Mic: %s\n", g_cameraOk ? "OK" : "FAIL",
                 g_visionOk ? "LOADED" : "NOT AVAILABLE", vision::modelName(), g_micOk ? "OK" : "FAIL");
+  Serial.printf("Gate: %s  Light: %s\n", gateName(listening),
+                mqtt::lightState() < 0 ? "unknown (no retained state yet)" : (mqtt::lightState() ? "ON" : "OFF"));
   Serial.printf("Runtime: %s  State: %s  remaining=%u ms  session=%s\n", g_runtimeEnabled ? "ON" : "PAUSED",
                 listening ? "LISTENING" : "WATCHING", (unsigned)rem, listening ? s.id : "-");
   Serial.printf("PSRAM free=%u  Heap free=%u min=%u\n", (unsigned)ESP.getFreePsram(), (unsigned)ESP.getFreeHeap(),
@@ -744,10 +774,17 @@ void loop() {
   const uint32_t now = millis();
   if (now - lastTick >= 20) {
     lastTick = now;
+    static bool gateWasClosed = false;
+    const bool gateClosed = lightGateClosed();
     lockState();
-    Transition tr = g_sm.tick(now);
+    Transition tr = gateClosed ? g_sm.forceStop(now) : g_sm.tick(now);  // light OFF ends listening at once
     unlockState();
     handleTransition(tr, now, -1, -1);
+    if (gateClosed != gateWasClosed) {
+      gateWasClosed = gateClosed;
+      Serial.printf("[STATE] light %s -> %s\n", gateClosed ? "OFF" : "ON",
+                    gateClosed ? "IDLE (vision + audio stopped)" : "WATCHING (Fall detection resumed)");
+    }
   }
   if (!Serial.available()) {
     delay(5);

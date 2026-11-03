@@ -1,0 +1,10 @@
+{
+ "schema_version": "1.2.0",
+ "room_id": "bedroom-01",
+ "light_on": false,
+ "source": "controller",
+ "reason": "voice keyword 'off' while lying",
+ "updated_at_ms": 1793707205100,
+ "trigger_event_id": "b1c2d3e4-0001-4000-8000-000000000001",
+ "session_id": "5d0c7a3e-1f2b-4c3d-9e4f-5a6b7c8d9e0f"
+}

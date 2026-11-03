@@ -80,3 +80,80 @@ def test_api_light_and_state():
         assert c.get("/api/v1/state").json()["events"][0]["source"] == "simulator"
         with c.websocket_connect("/ws") as ws:
             assert "devices" in ws.receive_json()
+
+
+# ---------------------------------------------------------------- light-gated voice control
+from app.fusion import decide  # noqa: E402
+from app.state import light_state_msg  # noqa: E402
+
+SID = "5d0c7a3e-1f2b-4c3d-9e4f-5a6b7c8d9e0f"
+
+
+def voice_event(source="voice-service", sid=SID):
+    e = load("runtime-voice-keyword-detected.json")
+    e["source"] = source
+    e["session_id"] = sid
+    return e
+
+
+def lying_state(clk):
+    s = SystemState(clock=clk)
+    s.on_event(load("runtime-listening-started.json"))  # session SID, device bedlight-01
+    return s
+
+
+def test_decide_accepts_keyword_in_active_session():
+    clk = Clock()
+    s = lying_state(clk)
+    d = decide(voice_event(), True, s.device_view("bedlight-01"), clk())
+    assert d.accepted and "active" in d.reason
+
+
+def test_decide_accepts_keyword_shortly_after_session_end_but_not_later():
+    clk = Clock()
+    s = lying_state(clk)
+    s.on_event(load("runtime-listening-stopped.json"))
+    assert decide(voice_event(), True, s.device_view("bedlight-01"), clk() + 5).accepted
+    assert not decide(voice_event(), True, s.device_view("bedlight-01"), clk() + 30).accepted
+
+
+def test_decide_rejections():
+    clk = Clock()
+    s = lying_state(clk)
+    dv = s.device_view("bedlight-01")
+    assert decide(voice_event(), False, dv, clk()).reason == "light already off"
+    assert not decide(voice_event(sid="00000000-0000-4000-8000-000000000000"), True, dv, clk()).accepted
+    assert not decide(voice_event(source="device"), True, dv, clk()).accepted
+    assert not decide(voice_event(), True, None, clk()).accepted
+    assert decide(voice_event(source="mock"), True, dv, clk()).accepted  # pipeline tests
+
+
+def test_light_state_message_matches_contract():
+    schema = json.loads((REPO / "contracts/v1/light-state.schema.json").read_text(encoding="utf-8"))
+    s = SystemState()
+    s.set_light(False, "controller", "voice keyword during lying session")
+    Draft202012Validator(schema).validate(light_state_msg("bedroom-01", s.snapshot()["light"], "e", SID))
+    s.set_light(True, "simulator", "wall switch")
+    Draft202012Validator(schema).validate(light_state_msg("bedroom-01", s.snapshot()["light"]))
+
+
+def test_handle_voice_turns_light_off_once():
+    import app.main as m
+
+    m.state = SystemState()
+    m.state.on_event(load("runtime-listening-started.json"))
+    m.state.set_light(True, "simulator", "test")
+    first = m.handle_voice(voice_event())
+    second = m.handle_voice(voice_event())
+    snap = m.state.snapshot()
+    assert first["accepted"] and not second["accepted"] and second["reason"] == "light already off"
+    assert snap["light"]["on"] is False and snap["light"]["changed_by"] == "controller"
+    assert snap["decisions"][0]["reason"] == "light already off"
+    assert snap["events"][0]["event_type"] == "LIGHT_STATE_CHANGED"
+
+
+def test_voice_model_status_drives_auto_control_flag():
+    s = SystemState()
+    assert s.snapshot()["light"]["auto_control"] is False
+    s.set_voice_model({"loaded": True})
+    assert s.snapshot()["light"]["auto_control"] is True

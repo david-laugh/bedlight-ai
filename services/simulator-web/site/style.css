@@ -37,3 +37,9 @@ td, th { text-align: left; padding: 4px; border-bottom: 1px solid var(--line); }
 .light-controls { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
 button { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; }
 .src-device { color: var(--ok); font-weight: 600; } .src-mock { color: var(--warn); font-weight: 600; } .src-simulator { color: var(--accent); font-weight: 600; }
+.notice.ok { background: #dcfce7; color: #14532d; }
+.muted { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+.switch-label { margin-left: auto; color: var(--muted); font-size: 12px; }
+ul.compact { margin: 0; padding-left: 18px; font-size: 12px; }
+ul.compact li.acc { color: var(--ok); } ul.compact li.rej { color: var(--muted); }
+.src-voice-service { color: #7c3aed; font-weight: 600; } .src-controller { color: var(--accent); font-weight: 600; }

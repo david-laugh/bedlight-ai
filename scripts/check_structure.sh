@@ -57,6 +57,11 @@ required_files=(
   contracts/v1/device-runtime-event.schema.json
   contracts/v1/voice-audio-chunk-response.schema.json
   docs/runtime-pipeline.md
+  docs/light-gated-pipeline.md
+  contracts/v1/light-state.schema.json
+  services/voice-service/app/keyword.py
+  services/voice-service/app/eim_runner.py
+  services/controller/app/fusion.py
   services/controller/app/main.py
   services/db-writer/app/main.py
   tests/mock-device/mock_device.py

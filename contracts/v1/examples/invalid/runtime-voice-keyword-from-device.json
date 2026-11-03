@@ -1,0 +1,20 @@
+{
+ "schema_version": "1.2.0",
+ "event_id": "b1c2d3e4-0002-4000-8000-000000000002",
+ "trace_id": "5d0c7a3e-1f2b-4c3d-9e4f-5a6b7c8d9e0f",
+ "source": "device",
+ "device_id": "bedlight-01",
+ "event_type": "VOICE_KEYWORD_DETECTED",
+ "model": null,
+ "confidence": 0.9,
+ "timestamp_ms": null,
+ "inference_ms": 5,
+ "session_id": "5d0c7a3e-1f2b-4c3d-9e4f-5a6b7c8d9e0f",
+ "data": {
+  "keyword": "off",
+  "threshold": 0.8,
+  "window_start_sample": 0,
+  "window_samples": 16000,
+  "scores": {}
+ }
+}

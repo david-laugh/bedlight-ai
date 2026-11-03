@@ -45,10 +45,10 @@
     },
     {
       "pattern": "bedlight/v1/voice/{device_id}/events",
-      "schema": "event-envelope.schema.json",
+      "schema": "device-runtime-event.schema.json",
       "qos": 1,
       "retain": false,
-      "status": "planned",
+      "status": "implemented (publishes only when a model is deployed)",
       "publishers": [
         "voice-service"
       ],
@@ -69,6 +69,20 @@
       "subscribers": [
         "simulator-web (MQTT over WebSocket)",
         "db-writer"
+      ]
+    },
+    {
+      "pattern": "bedlight/v1/lights/{room_id}/state",
+      "schema": "light-state.schema.json",
+      "qos": 1,
+      "retain": true,
+      "status": "implemented",
+      "publishers": [
+        "controller (for simulator wall switch)"
+      ],
+      "subscribers": [
+        "esp32",
+        "controller"
       ]
     }
   ],

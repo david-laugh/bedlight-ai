@@ -30,6 +30,7 @@ PREFIX_TO_SCHEMA = {
     "recording-": "voice-recording-response.schema.json",
     "runtime-": "device-runtime-event.schema.json",
     "chunk-": "voice-audio-chunk-response.schema.json",
+    "light-": "light-state.schema.json",
 }
 
 

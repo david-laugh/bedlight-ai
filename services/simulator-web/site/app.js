@@ -30,6 +30,8 @@
     const on = s.light.on;
     $("lightState").textContent = on ? "ON" : "OFF";
     $("lightBy").textContent = `(${s.light.changed_by})`;
+    $("lightReason").textContent = s.light.reason ? `마지막 변경: ${s.light.reason}` : "";
+    $("autoOn").style.display = s.light.auto_control ? "" : "none";
     $("bulb").classList.toggle("on", on);
     $("lightGlow").style.display = on ? "" : "none";
     $("wall").classList.toggle("lit", false);
@@ -41,6 +43,9 @@
     $("devId").textContent = d.device_id;
     $("devOnline").innerHTML = d.online ? '<span class="pill ok">online</span>' : `<span class="pill bad">offline</span> ${d.seconds_since_seen ?? "-"} s`;
     $("devSource").innerHTML = `<span class="src-${d.source}">${d.source}</span>`;
+    const gate = (d.runtime || {}).gate;
+    const gateText = { watching: "WATCHING (Fall 감시)", listening: "LISTENING", idle_light_off: "IDLE (조명 OFF → 감지 중단)", paused: "PAUSED (r)" };
+    $("devGate").textContent = gate ? (gateText[gate] || gate) : "-";
     $("devFw").textContent = d.firmware_version || "-";
     const v = d.vision, rt = d.runtime || {};
     $("visLabel").textContent = v.label || "None";
@@ -66,7 +71,21 @@
     renderServer(s);
   }
 
+  function renderVoice(s) {
+    const v = s.voice || {}, m = v.model;
+    if (!m) { $("vmModel").textContent = "voice-service 응답 없음"; }
+    else if (m.loaded) { $("vmModel").innerHTML = `<span class="pill ok">loaded</span> ${m.model.name || ""} ${m.model.version || ""}`; }
+    else { $("vmModel").innerHTML = `<span class="pill off">미배포</span> ${m.reason || ""}`; }
+    $("vmKeyword").textContent = m ? `${m.keyword} (threshold ${m.threshold})` : "-";
+    $("vmWindows").textContent = m && m.stats ? `${m.stats.windows} / 감지 ${m.stats.detections}` : "-";
+    $("vmRecent").innerHTML = (v.recent || []).map((r) =>
+      `<li><span class="src-${r.source}">${r.source}</span> ${r.received_at.slice(11, 19)} conf ${fmt(r.confidence)}</li>`).join("") || "<li>없음</li>";
+    $("decisions").innerHTML = (s.decisions || []).slice(0, 6).map((d) =>
+      `<li class="${d.accepted ? "acc" : "rej"}">${d.accepted ? "소등" : "무시"} — ${d.reason}${d.keyword_to_decision_ms != null ? ` (${d.keyword_to_decision_ms} ms)` : ""}</li>`).join("") || "<li>없음</li>";
+  }
+
   function renderServer(s) {
+    renderVoice(s);
     const a = s.server_audio, x = a.latest_session;
     $("srvReach").innerHTML = a.reachable ? '<span class="pill ok">reachable</span>' : a.reachable === false ? '<span class="pill bad">unreachable</span>' : "-";
     $("srvSession").textContent = x ? `${x.session_id} (${x.device_id})` : "-";

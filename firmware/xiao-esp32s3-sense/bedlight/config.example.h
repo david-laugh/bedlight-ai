@@ -47,3 +47,7 @@
 #define MQTT_HOST VOICE_SERVER_HOST
 #define MQTT_PORT 1883
 #define ROOM_ID "bedroom-01"
+
+// ---------- Virtual light gate ----------
+// Follow the simulator wall switch: light OFF -> stop vision/listening (IDLE), ON -> watch for Fall.
+#define LIGHT_GATE_ENABLED 1
