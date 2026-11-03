@@ -7,8 +7,14 @@
       "schema": "event-envelope.schema.json",
       "qos": 1,
       "retain": false,
-      "publishers": ["esp32", "mock-device"],
-      "subscribers": ["controller", "db-writer"]
+      "publishers": [
+        "esp32",
+        "mock-device"
+      ],
+      "subscribers": [
+        "controller",
+        "db-writer"
+      ]
     },
     {
       "pattern": "bedlight/v1/devices/{device_id}/status",
@@ -16,16 +22,65 @@
       "qos": 1,
       "retain": true,
       "last_will": "state=offline",
-      "publishers": ["esp32", "mock-device"],
-      "subscribers": ["controller", "db-writer"]
+      "publishers": [
+        "esp32",
+        "mock-device"
+      ],
+      "subscribers": [
+        "controller",
+        "db-writer"
+      ]
     },
     {
       "pattern": "bedlight/v1/simulator/{room_id}/events",
       "schema": "event-envelope.schema.json",
       "qos": 1,
       "retain": false,
-      "publishers": ["controller"],
-      "subscribers": ["db-writer"]
+      "publishers": [
+        "controller"
+      ],
+      "subscribers": [
+        "db-writer"
+      ]
+    },
+    {
+      "pattern": "bedlight/v1/voice/{device_id}/events",
+      "schema": "event-envelope.schema.json",
+      "qos": 1,
+      "retain": false,
+      "status": "planned",
+      "publishers": [
+        "voice-service"
+      ],
+      "subscribers": [
+        "controller",
+        "db-writer"
+      ]
+    },
+    {
+      "pattern": "bedlight/v1/lights/{room_id}/commands",
+      "schema": "event-envelope.schema.json",
+      "qos": 1,
+      "retain": false,
+      "status": "planned",
+      "publishers": [
+        "controller"
+      ],
+      "subscribers": [
+        "simulator-web (MQTT over WebSocket)",
+        "db-writer"
+      ]
+    }
+  ],
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/v1/recordings",
+      "service": "voice-service",
+      "port": 8001,
+      "request": "multipart/form-data: audio(WAV 16kHz mono 16-bit), label, device_id, capture_id, sample_rate",
+      "response_schema": "voice-recording-response.schema.json",
+      "status": "implemented"
     }
   ]
 }

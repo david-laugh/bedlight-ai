@@ -17,6 +17,13 @@ required_dirs=(
   contracts/v1
   contracts/v1/examples/valid
   contracts/v1/examples/invalid
+  services/voice-service
+  datasets/voice/raw/off
+  datasets/voice/raw/unknown
+  datasets/voice/raw/noise
+  datasets/voice/prepared/training
+  datasets/voice/prepared/testing
+  models/voice/deploy
   supabase/migrations
   docs
   .github/workflows
@@ -40,6 +47,18 @@ required_files=(
   contracts/v1/device-status.schema.json
   contracts/v1/topics.json
   firmware/xiao-esp32s3-sense/README.md
+  firmware/xiao-esp32s3-sense/bedlight/bedlight.ino
+  firmware/xiao-esp32s3-sense/bedlight/wav_header.h
+  firmware/xiao-esp32s3-sense/bedlight/config.example.h
+  services/voice-service/Dockerfile
+  services/voice-service/README.md
+  services/voice-service/app/main.py
+  contracts/v1/voice-recording-response.schema.json
+  datasets/voice/README.md
+  scripts/check_wav.py
+  scripts/prepare_voice_dataset.py
+  docs/voice-dataset.md
+  docs/voice-inference-plan.md
   firmware/xiao-esp32s3-sense/toolchain.env
   docs/architecture.md
   docs/interfaces.md
@@ -66,9 +85,15 @@ else
   echo "[file] MISSING supabase/migrations/*.sql"; fail=1
 fi
 
-# Secrets guard: a real .env must never be committed.
+# Secrets / personal data guards
 if git ls-files --error-unmatch .env >/dev/null 2>&1; then
   echo "[sec ] FAIL    .env is tracked by git"; fail=1
+fi
+if git ls-files | grep -E '(^|/)config\.h$' >/dev/null; then
+  echo "[sec ] FAIL    firmware config.h (Wi-Fi credentials) is tracked by git"; fail=1
+fi
+if git ls-files 'datasets/voice/raw/**/*.wav' 'datasets/voice/prepared/**/*.wav' | grep -q .; then
+  echo "[sec ] FAIL    voice recordings are tracked by git"; fail=1
 fi
 
 if [[ $fail -ne 0 ]]; then echo "structure check: FAIL"; exit 1; fi

@@ -7,7 +7,11 @@
 FastAPI 기반. MQTT 디바이스 이벤트를 받아 웹 시뮬레이터에 WebSocket 으로 조명 제어 명령을 전달하고,
 시뮬레이터의 적용 결과를 MQTT 로 다시 발행한다.
 
-## Input / Output 계약
+> 아키텍처 v2 변경: 음성 인식 결과(`VOICE_KEYWORD_DETECTED`)는 voice-service 가 `bedlight/v1/voice/{device_id}/events` 로 발행하고,
+> controller 가 누움 상태(ESP32 `LYING_DETECTED`)와 결합해 `LIGHT_OFF_REQUESTED` 를 **직접 생성**하여
+> MQTT `bedlight/v1/lights/{room_id}/commands` 로 가상 전등에 전달한다 (docs/architecture.md). 아래 표는 v1 설계이며 구현 시 갱신한다.
+
+## Input / Output 계약 (v1 설계)
 
 | 방향 | 채널 | 대상 | 페이로드 |
 |---|---|---|---|

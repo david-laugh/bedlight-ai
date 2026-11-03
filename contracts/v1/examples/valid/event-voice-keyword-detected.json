@@ -1,12 +1,25 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "event_id": "0b7e4f2a-1c3d-4e5f-8a9b-0c1d2e3f4a03",
   "trace_id": "3f6c1a2e-8b4d-4c1e-9a7f-2d5e6b7c8a90",
-  "source": "device",
+  "source": "voice-service",
   "device_id": "xiao-01",
   "event_type": "VOICE_KEYWORD_DETECTED",
   "sequence": 103,
-  "model": { "name": "bedlight-kws-off", "version": "ei-v1", "task": "keyword-spotting", "runtime": "edge-impulse" },
-  "data": { "keyword": "off", "confidence": 0.87, "threshold": 0.75 },
-  "timing": { "device_uptime_ms": 534020, "dsp_ms": 30.1, "inference_ms": 15.2 }
+  "model": {
+    "name": "bedlight-kws-off",
+    "version": "ei-v1",
+    "task": "keyword-spotting",
+    "runtime": "edge-impulse-linux"
+  },
+  "data": {
+    "keyword": "off",
+    "confidence": 0.87,
+    "threshold": 0.75,
+    "capture_id": "9d2f0c1e-5a6b-4c7d-8e9f-0a1b2c3d4e5f"
+  },
+  "timing": {
+    "emitted_at": "2026-11-03T12:00:00.090Z",
+    "inference_ms": 15.2
+  }
 }

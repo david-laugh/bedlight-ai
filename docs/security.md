@@ -26,6 +26,16 @@
 - ACL 원칙: 디바이스는 `devices/{자기 id}/#` 에만 쓰기, db-writer 는 읽기 전용, controller 는 `simulator/+/events` 쓰기.
 - `message_size_limit 65536` 으로 대용량 페이로드 차단.
 
+## 2-A. Voice Service (포트 8001)
+
+- ESP32 가 LAN 에서 접속해야 하므로 **8001 은 0.0.0.0 에 바인딩**된다 (다른 서비스는 127.0.0.1).
+  `VOICE_BIND_ADDR` 로 특정 LAN IP 에만 바인딩할 수 있다.
+- `VOICE_UPLOAD_TOKEN` 설정 시 `X-Device-Token` 헤더 필수 (`hmac.compare_digest`). 펌웨어 `config.h` 에 같은 값.
+  평문 HTTP 이므로 같은 LAN 의 도청은 막지 못한다 → 신뢰할 수 있는 가정용 Wi-Fi 에서만 사용, 공유기 포트포워딩 금지.
+- 파일명은 서버가 생성, label allow-list, ID 정규식, 경로 resolve 재검증, 크기·길이 상한 → 경로 조작/디스크 고갈 완화.
+- Wi-Fi SSID/비밀번호와 토큰은 `firmware/.../config.h` (git ignore). `scripts/check_structure.sh` 가 추적 여부를 검사.
+- 녹음은 개인 음성 데이터 → `datasets/voice/**` WAV·metadata 는 커밋 금지 (`.gitignore` + CI 검사).
+
 ## 3. Supabase
 
 - `public.device_events` 는 RLS 활성화 + 정책 없음 → PostgREST 로 `anon`/`authenticated` 접근 시 0 행 / 권한 오류.
@@ -38,7 +48,9 @@
 
 ## 4. 개인정보
 
-- 카메라 이미지·음성은 디바이스 밖으로 전송하지 않는다 (추론 결과만 전송).
+- 카메라 이미지는 디바이스 밖으로 전송하지 않는다 (Vision 추론 결과만 전송).
+- 음성은 아키텍처 v2 에서 **LAN 안의 voice-service 로 전송**된다 (데이터 수집 및 중앙 KWS). 인터넷/클라우드로 직접 보내지 않으며,
+  Edge Impulse 업로드는 사용자가 정리된 데이터셋을 수동으로 올리는 경우에만 일어난다.
 - 학습 데이터셋(침실 영상, 음성)은 Repository 에 커밋하지 않는다 (`models/**/dataset/` ignore).
 
 ## 5. 컨테이너

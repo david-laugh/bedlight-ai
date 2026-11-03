@@ -37,6 +37,28 @@
 - mock-device 는 서버와 같은 호스트에서 실행되므로 M4 를 더 정확히 측정할 수 있다 (실기기 수치와 구분 보고).
 - Controller·Simulator·DB Writer 는 같은 호스트 시계를 사용 (브라우저도 같은 PC 에서 실행 시).
 
+## 2-A. 음성 데이터 수집 경로 측정 (이번 단계에서 구현됨)
+
+녹음마다 `capture_id` (UUID v4) 로 ESP32 시리얼 로그와 서버 `metadata.jsonl` 을 연결한다.
+
+| # | 항목 | 측정 위치 | 기록 |
+|---|---|---|---|
+| V1 | 오디오 녹음 시간 | ESP32 `millis()` (warm-up 제외 실제 수집 구간) | 시리얼 `[metrics] record_ms`, 업로드 필드 `record_ms` → `metadata.device.record_ms` |
+| V2 | 오디오 데이터 크기 | ESP32 | `[metrics] wav_bytes` (기대값 64044 B = 44 + 64000), 서버 `file_size` |
+| V3 | HTTP 업로드 소요 시간 | ESP32 connect ~ 응답 수신 | `[metrics] upload_ms` (시리얼만, 같은 요청에 포함 불가) |
+| V4 | Free Heap / Free PSRAM | ESP32 `ESP.getFreeHeap()/getFreePsram()` | 업로드 필드 → `metadata.device`, 시리얼 `[metrics]` |
+| S1 | 업로드 수신 시간 | voice-service: 요청 도착(미들웨어) ~ 파일 본문 읽기 완료 | 응답 `timing.receive_ms`, `Server-Timing` |
+| S2 | WAV 검증 시간 | 파싱 + 형식 검사 + 품질 분석 | `timing.validate_ms` |
+| S3 | 파일 저장 시간 | O_EXCL 생성 + write + fsync + metadata append | `timing.save_ms` |
+| S4 | 전체 API 처리 시간 | 요청 도착 ~ 저장 완료 | `timing.total_ms` |
+| S5 | (예정) 추론 시간 | 모델 추가 후 | `inference_ms` (별도 측정) |
+
+주의: `receive_ms` 는 uvicorn 이 요청을 애플리케이션에 넘긴 시점부터이므로 TCP 전송 시간 전체를 포함하지 않는다.
+네트워크 전송까지 포함한 값은 ESP32 의 `upload_ms` (V3) 를 사용한다.
+Windows Docker Desktop bind mount 에서는 fsync 때문에 `save_ms` 가 커질 수 있다 (개발 PC smoke test 1회에서 관찰, 벤치마크 아님).
+
+시나리오 (계획): VR1 단일 녹음 30회 / VR2 연속 녹음 100회(누수 확인: free_psram 추세) / VR3 Wi-Fi RSSI 별 upload_ms 비교.
+
 ## 3. 추적 방법
 
 | 항목 | 방법 |

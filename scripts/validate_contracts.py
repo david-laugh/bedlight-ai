@@ -27,6 +27,7 @@ CONTRACTS = ROOT / "contracts"
 PREFIX_TO_SCHEMA = {
     "event-": "event-envelope.schema.json",
     "status-": "device-status.schema.json",
+    "recording-": "voice-recording-response.schema.json",
 }
 
 

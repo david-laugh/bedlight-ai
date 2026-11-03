@@ -2,14 +2,16 @@ name: services-ci
 
 # 서비스 테스트. 대상 코드/테스트가 존재할 때만 해당 job 이 실행된다.
 #  - contracts   : 항상 실행 (valid 예시는 통과, invalid 예시는 거부되어야 함)
-#  - python-unit : services/*/tests/test_*.py, tests/mock-device/tests/test_*.py 가 있을 때
+#  - python-unit : services/*/tests/test_*.py, scripts/tests/test_*.py, tests/mock-device/tests/test_*.py 가 있을 때
+#                  (voice-service: 업로드 API, WAV 검증, 잘못된 WAV 거부, 저장 경로/중복 파일명,
+#                   scripts: check_wav, prepare_voice_dataset) — 테스트 오디오는 모두 합성 fixture
 #  - frontend    : services/simulator-web/package.json 이 있을 때
 #  - integration : tests/integration/test_*.py 가 있을 때
 # 대상이 없으면 job 은 "skipped" 로 표시되며, detect job Summary 에 미실행 사유가 남는다.
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, release]
   pull_request:
   workflow_dispatch:
 
@@ -29,7 +31,7 @@ jobs:
       - id: d
         run: |
           targets=()
-          for dir in services/controller services/db-writer tests/mock-device; do
+          for dir in services/voice-service scripts services/controller services/db-writer tests/mock-device; do
             if compgen -G "$dir/tests/test_*.py" > /dev/null; then targets+=("\"$dir\""); fi
           done
           python_targets="[$(IFS=,; echo "${targets[*]}")]"
@@ -80,6 +82,7 @@ jobs:
           pip install pytest -r scripts/requirements-ci.txt
           if [[ -f "${{ matrix.target }}/requirements.txt" ]]; then pip install -r "${{ matrix.target }}/requirements.txt"; fi
           if [[ -f "${{ matrix.target }}/requirements-dev.txt" ]]; then pip install -r "${{ matrix.target }}/requirements-dev.txt"; fi
+          if [[ -f "${{ matrix.target }}/tests/requirements.txt" ]]; then pip install -r "${{ matrix.target }}/tests/requirements.txt"; fi
       - name: pytest
         run: pytest -q "${{ matrix.target }}/tests"
 

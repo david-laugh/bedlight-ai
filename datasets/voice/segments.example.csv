@@ -1,0 +1,4 @@
+file,action,start_ms,note
+# Copy to segments.csv. include = use start_ms (1 s window) instead of auto peak; exclude = drop recording.
+off_20261103T120000_ab12cd34.wav,include,450,word started late
+off_20261103T120105_ef56ab78.wav,exclude,,cough instead of "off"

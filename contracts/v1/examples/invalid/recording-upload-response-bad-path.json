@@ -1,0 +1,10 @@
+{
+  "capture_id": "3f6c1a2e-8b4d-4c1e-9a7f-2d5e6b7c8a90",
+  "label": "off",
+  "filename": "off_20261103T120000_3f6c1a2e.wav",
+  "relative_path": "../../etc/off_20261103T120000_3f6c1a2e.wav",
+  "duration_ms": 2000.0, "sample_rate": 16000, "channels": 1, "bits_per_sample": 16, "num_samples": 32000,
+  "file_size": 64044, "status": "saved", "validation_status": "valid", "warnings": [],
+  "quality": { "num_samples": 32000, "rms": 0.05, "rms_dbfs": -26.0, "peak": 9000, "peak_dbfs": -11.2, "clipped_samples": 0, "clipping": false, "dc_offset": 1.5, "all_zero": false, "likely_silent": false },
+  "timing": { "receive_ms": 12.1, "validate_ms": 3.4, "save_ms": 1.2, "total_ms": 16.9 }
+}
